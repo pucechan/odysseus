@@ -22,8 +22,6 @@ NON_ADMIN_BLOCKED_TOOLS = {
     "ls",
     "get_workspace",
     "search_chats",
-    "manage_memory",
-    "manage_skills",
     "manage_tasks",
     "manage_endpoints",
     "manage_mcp",
