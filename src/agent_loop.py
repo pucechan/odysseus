@@ -1882,6 +1882,12 @@ async def stream_agent_loop(
                     if s.get("function", {}).get("name") in _relevant_tools
                 ]
                 all_tool_schemas = base_schemas + _mcp_filtered
+                # Debug: check if manage_memory and manage_skills are in the selection
+                _debug_mm = any(s.get("function", {}).get("name") == "manage_memory" for s in base_schemas)
+                _debug_ms = any(s.get("function", {}).get("name") == "manage_skills" for s in base_schemas)
+                _debug_rt = "manage_memory" in _relevant_tools and "manage_skills" in _relevant_tools
+                if not _debug_mm or not _debug_ms:
+                    logger.warning(f"[browser-debug] mm_in_base={_debug_mm} ms_in_base={_debug_ms} both_in_rt={_debug_rt} rt_size={len(_relevant_tools)}")
             else:
                 base_schemas = FUNCTION_TOOL_SCHEMAS if _needs_admin else [
                     s for s in FUNCTION_TOOL_SCHEMAS
