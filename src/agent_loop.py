@@ -1061,7 +1061,17 @@ def _build_base_prompt(
 
     # Inject MCP tool descriptions
     if mcp_mgr:
-        mcp_desc = mcp_mgr.get_tool_descriptions_for_prompt(mcp_disabled_map or {})
+        # When browser tools are disabled, suppress their descriptions too
+        # so the model doesn't read about tools it can't call.
+        _mcp_disabled_for_prompt = dict(mcp_disabled_map or {})
+        if disabled_tools and "browser_tools" in disabled_tools:
+            # Collect all tool names for the builtin_browser server into the
+            # disabled map so get_tool_descriptions_for_prompt filters them.
+            _mcp_disabled_for_prompt.setdefault("builtin_browser", set())
+            for _sid, _tools in (mcp_mgr._tools if hasattr(mcp_mgr, '_tools') else {}).items():
+                if _sid == "builtin_browser":
+                    _mcp_disabled_for_prompt["builtin_browser"].update(t["name"] for t in _tools)
+        mcp_desc = mcp_mgr.get_tool_descriptions_for_prompt(_mcp_disabled_for_prompt)
         if mcp_desc:
             agent_prompt += mcp_desc
 
