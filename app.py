@@ -760,7 +760,7 @@ async def debug_paths():
     return {
         "base_dir": BASE_DIR,
         "static_dir": STATIC_DIR,
-        "index_exists": os.path.exists(os.path.join(BASE_DIR, "static", "index.html")),
+        "index_exists": os.path.exists(os.path.join(STATIC_DIR, "index.html")),
         "cwd": os.getcwd(),
     }
 
@@ -1155,12 +1155,4 @@ async def _shutdown_event():
         logger.warning(f"MCP shutdown error: {e}")
     logger.info("Application shutdown complete")
 
-@app.get("/api/debug-paths")
-async def debug_paths():
-    from core.constants import BASE_DIR, STATIC_DIR
-    return {
-        "base_dir": BASE_DIR,
-        "static_dir": STATIC_DIR,
-        "index_exists": os.path.exists(os.path.join(STATIC_DIR, "index.html")),
-        "cwd": os.getcwd(),
-    }
+
