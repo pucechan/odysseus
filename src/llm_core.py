@@ -2165,7 +2165,7 @@ async def stream_llm_with_fallback(candidates, messages, **kwargs):
             return  # candidate finished (success, or terminal error already sent)
     # Every candidate failed pre-content — surface the last error.
     if last_error:
-        yield last_error HEAD
+        yield last_error
         # For Ollama's OpenAI-compat /v1 endpoint with thinking models (qwen3,
         # gemma4, etc.), suppress thinking so tool calls aren't swallowed inside
         # <think> blocks. Ollama /v1 accepts "think": false as a top-level param.
