@@ -1549,8 +1549,9 @@ function initializeEventListeners() {
   // Mode-affected tools: default ON in Agent mode, default OFF in Chat mode,
   // but the user's explicit per-mode override is persisted and honored.
   const MODE_TOOLS = [
-    { btnId: 'web-toggle-btn',  checkboxId: 'web-toggle',  stateKey: 'web' },
-    { btnId: 'bash-toggle-btn', checkboxId: 'bash-toggle', stateKey: 'bash' },
+    { btnId: 'web-toggle-btn',    checkboxId: 'web-toggle',    stateKey: 'web' },
+    { btnId: 'bash-toggle-btn',   checkboxId: 'bash-toggle',   stateKey: 'bash' },
+    { btnId: 'browser-toggle-btn', checkboxId: 'browser-toggle', stateKey: 'browser' },
   ];
 
   function _modeKey(stateKey, mode) { return `${stateKey}_${mode}`; }
@@ -1700,6 +1701,7 @@ function initializeEventListeners() {
   }
   setupToggle('web-toggle-btn', 'web-toggle', 'web');
   setupToggle('bash-toggle-btn', 'bash-toggle', 'bash');
+  setupToggle('browser-toggle-btn', 'browser-toggle', 'browser');
   try { workspaceModule.initWorkspace(); } catch (_) {}
 
   // Document editor toggle (special: uses module panel, not a checkbox)

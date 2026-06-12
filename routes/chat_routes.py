@@ -479,6 +479,7 @@ def setup_chat_routes(
         # actually get bash enabled.
         allow_bash = form_data.get("allow_bash") or (body or {}).get("allow_bash")
         allow_web_search = form_data.get("allow_web_search") or (body or {}).get("allow_web_search")
+        allow_browser = form_data.get("allow_browser") or (body or {}).get("allow_browser")
         use_rag = form_data.get("use_rag")
         search_context = form_data.get("search_context")  # pre-fetched web search results (compare mode)
         compare_mode = str(form_data.get("compare_mode", "")).lower() == "true"
@@ -700,6 +701,8 @@ def setup_chat_routes(
         if allow_web_search is not None and str(allow_web_search).lower() != "true":
             disabled_tools.add("web_search")
             disabled_tools.add("web_fetch")
+        if allow_browser is not None and str(allow_browser).lower() != "true":
+            disabled_tools.add("browser_tools")
 
         # Nobody/incognito mode: deny tools that would expose the user's
         # persistent memory, past chats, or other identity-linked data.

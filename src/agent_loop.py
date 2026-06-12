@@ -1883,6 +1883,8 @@ async def stream_agent_loop(
                     t for t in all_tool_schemas
                     if t.get("function", {}).get("name") not in disabled_tools
                     and t.get("name") not in disabled_tools
+                    and not ("browser_tools" in disabled_tools
+                             and t.get("function", {}).get("name", "").startswith("mcp__builtin_browser__"))
                 ]
         else:
             # Local: only MCP schemas when message suggests MCP tool usage

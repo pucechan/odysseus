@@ -815,6 +815,7 @@ import { wireArrowUpRecall, getLastUserMessageFromChatHistory } from './composer
         fd.set('mode', 'chat');
       }
       fd.append('allow_bash', el('bash-toggle').checked ? 'true' : 'false');
+      fd.append('allow_browser', el('browser-toggle').checked ? 'true' : 'false');
       const ragChk = el('rag-toggle');
       if (ragChk && !ragChk.checked) {
         fd.append('use_rag', 'false');
