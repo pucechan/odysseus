@@ -2684,6 +2684,28 @@ body.bg-pattern-sparkles {
     .mode-toggle-btn + .mode-toggle-btn {
       border-left: none;
     }
+
+    .strict-tools-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 8px;
+      font-size: 11px;
+      font-weight: 500;
+      color: color-mix(in srgb, var(--fg) 40%, transparent);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+      transition: color 0.2s;
+    }
+    .strict-tools-label:hover {
+      color: var(--fg);
+    }
+    .strict-tools-label input[type="checkbox"] {
+      vertical-align: middle;
+      cursor: pointer;
+      accent-color: var(--accent, var(--red));
+    }
     /* Message count badge in the chat-meta header (next to the title).
        Auto-hides when empty so a brand-new chat doesn't show "0 msgs". */
     .chat-meta-count {

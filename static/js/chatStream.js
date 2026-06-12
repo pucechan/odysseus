@@ -57,6 +57,10 @@ export function handleUIControl(uiData) {
       document.querySelectorAll('[data-mode-tool]').forEach(function(b) {
         b.style.display = modeVal === 'agent' ? '' : 'none';
       });
+      var strictLabel = document.getElementById('strict-tools-label');
+      if (strictLabel) {
+        strictLabel.style.display = modeVal === 'agent' ? 'inline-flex' : 'none';
+      }
 
     } else if (uiEvent === 'switch_model' || uiData.ui_event === 'switch_model') {
       var modelDisplay = document.querySelector('.current-model-name, #current-model');

@@ -181,6 +181,7 @@ if AUTH_ENABLED:
         "/api/auth/integrations/presets",
         "/api/health",
         "/api/version",
+        "/api/debug-paths",
         "/login",
     }
     AUTH_EXEMPT_PREFIXES = ["/static"]
@@ -753,6 +754,16 @@ from routes.vault_routes import setup_vault_routes
 app.include_router(setup_vault_routes())
 
 # Contacts (CardDAV)
+@app.get("/api/debug-paths")
+async def debug_paths():
+    from core.constants import BASE_DIR, STATIC_DIR
+    return {
+        "base_dir": BASE_DIR,
+        "static_dir": STATIC_DIR,
+        "index_exists": os.path.exists(os.path.join(BASE_DIR, "static", "index.html")),
+        "cwd": os.getcwd(),
+    }
+
 from routes.contacts_routes import setup_contacts_routes
 app.include_router(setup_contacts_routes())
 
@@ -1143,3 +1154,13 @@ async def _shutdown_event():
     except Exception as e:
         logger.warning(f"MCP shutdown error: {e}")
     logger.info("Application shutdown complete")
+
+@app.get("/api/debug-paths")
+async def debug_paths():
+    from core.constants import BASE_DIR, STATIC_DIR
+    return {
+        "base_dir": BASE_DIR,
+        "static_dir": STATIC_DIR,
+        "index_exists": os.path.exists(os.path.join(STATIC_DIR, "index.html")),
+        "cwd": os.getcwd(),
+    }
