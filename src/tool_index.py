@@ -33,18 +33,24 @@ logger = logging.getLogger(__name__)
 # keyword intent so a trivial agent prompt like "test" does not carry every
 # domain's schemas and rules.
 ALWAYS_AVAILABLE = frozenset({
-    # Memory is ambient — "remember this" can follow any message regardless
-    # of topic. Without this, RAG drops it and the agent falls back to
-    # app_api /api/memory/add which fails with 422 on first attempt.
-    "manage_memory",
-    # Ask the user a multiple-choice question for a decision/clarification.
-    # Always reachable so the agent can pause and ask at any point.
+    # Core interaction
     "ask_user",
-    # Write back to the active plan (tick steps done / revise) during execution.
     "update_plan",
-    # Skill discovery. Full procedures fetched on-demand via search.
-    # Must be always available or the agent can't discover capabilities.
+    "manage_memory",
+    # Skill discovery — lets the agent find and load domain capabilities
     "manage_skills",
+    # Shell — for system tasks, git, builds, etc.
+    "bash",
+    # File tools — confined to workspace when set
+    "read_file",
+    "write_file",
+    "edit_file",
+    "grep",
+    "glob",
+    "ls",
+    # Web lookup
+    "web_search",
+    "web_fetch",
 })
 
 # Tools that the Personal Assistant always has access to during scheduled
