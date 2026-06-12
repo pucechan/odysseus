@@ -1198,23 +1198,35 @@ def _resolve_tool_blocks(round_response: str, native_tool_calls: list, round_num
         if tool_blocks:
             used_native = True
     if not used_native:
-        # Native function-calling models (GPT/Claude/Grok/Qwen3/DeepSeek-V, etc.)
-        # have a reliable structured channel for real tool invocations. When such
-        # a model emits no native tool_calls, any ```bash/```python/```json fence
-        # in its prose is virtually always an illustrative example for the user
-        # (e.g. "here's the command you'd run"), not an attempted tool call —
-        # executing it causes accidental runs and clarification loops (#3222).
+        # For API models that support native function calling (GPT, Claude,
+        # Gemini, DeepSeek-V, Qwen3+, etc.), the structured `tool_calls`
+        # channel is the ONLY reliable path for real invocations. When such a
+        # model emits no native calls, any ```bash/```python/```json fence in
+        # its prose is virtually always an illustrative example, not an
+        # attempted invocation — executing it causes accidental runs and
+        # clarification loops (#3222). Fenced-block parsing is a legacy
+        # compatibility path for non-native / text-only models.
         #
-        # Gate ONLY that fenced-block pattern for native models, not the whole
-        # parser: explicit [TOOL_CALL]/<invoke>/<tool_code>/DSML markup that
-        # leaks into content as text is never illustrative — it's a real call
-        # the model couldn't emit on its structured channel (e.g. DeepSeek-V
-        # falling back to DSML). Dropping the whole parser would silently lose
-        # those too. Non-native / textual-only models keep every pattern,
-        # fenced blocks included, since that's their *only* tool channel.
-        tool_blocks = parse_tool_blocks(round_response, skip_fenced=is_api_model)
-        if tool_blocks:
-            logger.info(f"Agent round {round_num}: {len(tool_blocks)} fenced tool block(s) detected")
+        # Additionally, dropping the fenced fallback for API models has a
+        # critical side-effect: hallucination resistance. When the model
+        # "imagines" a result instead of calling a tool, there is no second
+        # path that silently catches its text-only response and pretends a
+        # tool was used. The round ends with zero tool blocks — the caller
+        # sees this and can retry with `tool_choice: "required"` (Strict
+        # Tools mode) or let the user know nothing was executed.
+        if is_api_model:
+            tool_blocks = []
+            logger.info(f"Agent round {round_num}: API model, no native calls — fenced fallback disabled; "
+                        f"{len(round_response)} chars of text-only response")
+        else:
+            # Non-API / legacy models: attempt fenced-block parsing as their
+            # only tool channel. Also catch DSML / [TOOL_CALL] / <invoke> / etc.
+            # markup that leaks into content as text (e.g. DeepSeek-V falling
+            # back to DSML) — those are real calls the model couldn't emit on
+            # its structured channel.
+            tool_blocks = parse_tool_blocks(round_response, skip_fenced=False)
+            if tool_blocks:
+                logger.info(f"Agent round {round_num}: {len(tool_blocks)} fenced tool block(s) detected")
 
     resp_preview = round_response[:200].replace('\n', '\\n') if round_response else "(empty)"
     logger.info(f"Agent round {round_num} summary: {len(round_response)} chars, "
