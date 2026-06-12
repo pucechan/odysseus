@@ -42,6 +42,9 @@ ALWAYS_AVAILABLE = frozenset({
     "ask_user",
     # Write back to the active plan (tick steps done / revise) during execution.
     "update_plan",
+    # Skill discovery. Full procedures fetched on-demand via search.
+    # Must be always available or the agent can't discover capabilities.
+    "manage_skills",
 })
 
 # Tools that the Personal Assistant always has access to during scheduled
