@@ -1895,6 +1895,8 @@ async def stream_agent_loop(
                 ]
                 all_tool_schemas = base_schemas + mcp_schemas
             if disabled_tools:
+                _before = len(all_tool_schemas)
+                _before_names = {t.get("function", {}).get("name") for t in all_tool_schemas if t.get("function")}
                 all_tool_schemas = [
                     t for t in all_tool_schemas
                     if t.get("function", {}).get("name") not in disabled_tools
@@ -1902,6 +1904,10 @@ async def stream_agent_loop(
                     and not ("browser_tools" in disabled_tools
                              and t.get("function", {}).get("name", "").startswith("mcp__builtin_browser__"))
                 ]
+                _after_names = {t.get("function", {}).get("name") for t in all_tool_schemas if t.get("function")}
+                _removed = _before_names - _after_names
+                if _removed:
+                    logger.warning(f"[browser-debug] disabled_tools filter removed {_removed}; disabled_tools={disabled_tools}")
         else:
             # Local: only MCP schemas when message suggests MCP tool usage
             _last_content = _last_user.lower()
