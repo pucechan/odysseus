@@ -1,0 +1,28 @@
+{
+  "admin::test-example-does-nothing": {
+    "uses": 0,
+    "last_used": null,
+    "necessity": {
+      "necessary": false,
+      "redundant_with": [],
+      "reason": "The skill performs no meaningful action and is purely illustrative."
+    },
+    "audit_verdict": "skipped",
+    "audit_by_teacher": false,
+    "audit_worker_model": "gemma-4-E4B-it-QAT-Q4_0.gguf",
+    "audited_at": 1781300532.199087
+  },
+  "admin::email": {
+    "uses": 0,
+    "last_used": null,
+    "necessity": {
+      "necessary": true,
+      "redundant_with": [],
+      "reason": "This skill encapsulates a complex, multi-step workflow for email management that requires specific tool orchestration."
+    },
+    "audit_verdict": "pass",
+    "audit_by_teacher": false,
+    "audit_worker_model": "gemma-4-E4B-it-QAT-Q4_0.gguf",
+    "audited_at": 1781309710.3001487
+  }
+}
