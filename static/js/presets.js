@@ -85,6 +85,7 @@ export function init(apiBase) {
   initSaveAsTemplate();
   initExpandButton();
   initPersistentChat();
+  initVisionPromptTab();
   loadUserTemplates();
 }
 
