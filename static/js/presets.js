@@ -606,6 +606,7 @@ export function openCustomPresetModal() {
   if (suffixInput) suffixInput.value = savedConfig.inject_suffix || '';
 
   // Load vision prompt (fires async fetch; populates on arrival)
+  console.log('[vision-tab] openCustomPresetModal calling _loadVisionPromptTab');
   if (window._loadVisionPromptTab) window._loadVisionPromptTab();
 
   // Track initial state to detect changes for dynamic button label
@@ -1102,9 +1103,11 @@ export function removePersistentChat(sessionId) {
  * matching the pattern of the Persona/Inject tabs.
  */
 export function initVisionPromptTab() {
+  console.log('[vision-tab] initVisionPromptTab called');
   const textarea = document.getElementById('vision-prompt-textarea');
   const resetBtn = document.getElementById('vision-prompt-reset-btn');
   const msgEl = document.getElementById('vision-prompt-msg');
+  console.log('[vision-tab] textarea:', !!textarea, 'resetBtn:', !!resetBtn);
   if (!textarea || !resetBtn) return;
 
   // Default fallback (must match src/settings.py DEFAULT_SETTINGS["vision_prompt"])
@@ -1117,16 +1120,21 @@ export function initVisionPromptTab() {
   // Populated by openCustomPresetModal() so the value is ready when the
   // modal opens, just like the character name / system prompt / injects.
   window._loadVisionPromptTab = async function () {
+    console.log('[vision-tab] _loadVisionPromptTab called');
     try {
       const res = await fetch('/api/auth/settings', { credentials: 'same-origin' });
       const settings = await res.json();
+      console.log('[vision-tab] settings response:', JSON.stringify(settings));
       _cachedPrompt = (settings.vision_prompt && settings.vision_prompt.trim())
         ? settings.vision_prompt
         : DEFAULT_VISION_PROMPT;
+      console.log('[vision-tab] _cachedPrompt set to:', JSON.stringify(_cachedPrompt));
     } catch (e) {
+      console.log('[vision-tab] fetch failed:', e);
       _cachedPrompt = DEFAULT_VISION_PROMPT;
     }
     textarea.value = _cachedPrompt;
+    console.log('[vision-tab] textarea.value set to:', JSON.stringify(textarea.value));
     if (msgEl) msgEl.textContent = '';
   };
 
@@ -1154,7 +1162,11 @@ export function initVisionPromptTab() {
 
   // Reset to default
   resetBtn.addEventListener('click', () => {
+    console.log('[vision-tab] Reset button clicked');
+    console.log('[vision-tab] Current textarea value:', JSON.stringify(textarea.value));
+    console.log('[vision-tab] DEFAULT_VISION_PROMPT:', JSON.stringify(DEFAULT_VISION_PROMPT));
     textarea.value = DEFAULT_VISION_PROMPT;
+    console.log('[vision-tab] After setting, textarea.value:', JSON.stringify(textarea.value));
     saveVisionPrompt(DEFAULT_VISION_PROMPT);
   });
 }
