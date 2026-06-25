@@ -1156,6 +1156,7 @@
               <button class="preset-tab active" data-chartab="inject"><svg class="preset-tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 2 4 4"/><path d="m17 7 3-3"/><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5"/><path d="m9 11 4 4"/><path d="m5 19-3 3"/><path d="m14 4 6 6"/></svg><span>Inject</span></button>
               <button class="preset-tab" data-chartab="character"><svg class="preset-tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Persona</span></button>
               <button class="preset-tab" data-chartab="group"><svg class="preset-tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Group</span></button>
+              <button class="preset-tab" data-chartab="vision"><svg class="preset-tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/></svg><span>Vision</span></button>
             </div>
             <!-- Inject tab (also holds model tuning: temperature + max tokens) -->
             <div class="preset-chartab" data-chartab-panel="inject">
@@ -1215,6 +1216,16 @@
               </div>
               <div id="group-participants" style="display:flex;flex-direction:column;gap:4px;margin-bottom:0;max-height:220px;overflow-y:auto;"></div>
               <button type="button" id="group-add-btn" class="preset-save-btn" style="width:100%;background:none;border:1px dashed var(--border);color:var(--fg);opacity:0.6;font-size:11px;padding:4px;margin-top:0;">+ Add participant</button>
+            </div>
+            <!-- Vision tab -->
+            <div class="preset-chartab" data-chartab-panel="vision" style="display:none">
+              <label for="vision-prompt-textarea">Vision description prompt</label>
+              <p style="margin:4px 0 8px;font-size:0.85em;opacity:0.7;">This prompt is sent along with images to the vision model. Customise the tone and detail level to your liking.</p>
+              <textarea id="vision-prompt-textarea" rows="4" style="width:100%;box-sizing:border-box;resize:vertical;"></textarea>
+              <div style="display:flex;gap:6px;margin-top:6px;">
+                <button type="button" id="vision-prompt-reset-btn" class="preset-save-btn" style="font-size:11px;">↺ Reset to default</button>
+                <span id="vision-prompt-msg" style="font-size:11px;opacity:0.6;display:flex;align-items:center;"></span>
+              </div>
             </div>
           </div>
         </div>

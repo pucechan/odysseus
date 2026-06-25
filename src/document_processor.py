@@ -362,11 +362,21 @@ def analyze_image_with_vl_result(image_path: str, owner: str | None = None) -> d
         mime_map = {".jpg": "jpeg", ".jpeg": "jpeg", ".png": "png", ".gif": "gif", ".webp": "webp"}
         img_format = mime_map.get(ext, "jpeg")
 
+        # Build the vision description request. The prompt is configurable
+        # via the Vision tab in the Prompt modal (Settings → vision_prompt).
+        # Falls back to the warm default if unset.
+        DEFAULT_VISION_PROMPT = (
+            "Describe this image as if you're talking to someone who can't see it"
+            " — be warm, vivid, and natural. Focus on what matters most in the"
+            " scene."
+        )
+        vision_prompt = settings.get("vision_prompt", "") or DEFAULT_VISION_PROMPT
+
         vl_messages = [
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Describe this image as if you're talking to someone who can't see it — be warm, vivid, and natural. Focus on what matters most in the scene."},
+                    {"type": "text", "text": vision_prompt},
                     {"type": "image_url", "image_url": {"url": f"data:image/{img_format};base64,{img_data}"}},
                 ],
             }

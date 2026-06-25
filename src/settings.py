@@ -44,6 +44,8 @@ DEFAULT_SETTINGS = {
     "vision_enabled": True,
     # Ordered fallback chain for the Vision model (image analysis, OCR, tagging).
     "vision_model_fallbacks": [],
+    # Custom prompt for vision model image descriptions
+    "vision_prompt": "Describe this image as if you're talking to someone who can't see it — be warm, vivid, and natural. Focus on what matters most in the scene.",
     # Public base URL used to build clickable deep-links in outgoing alerts
     # (e.g., urgency alert email). Example: "https://chat.example.com"
     "app_public_url": "",

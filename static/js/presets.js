@@ -1090,6 +1090,77 @@ export function removePersistentChat(sessionId) {
   }
 }
 
+/**
+ * Initialise the Vision tab in the Prompt modal — loads the current
+ * vision_prompt setting into the textarea and wires up save + reset.
+ */
+export function initVisionPromptTab() {
+  const textarea = document.getElementById('vision-prompt-textarea');
+  const resetBtn = document.getElementById('vision-prompt-reset-btn');
+  const msgEl = document.getElementById('vision-prompt-msg');
+  if (!textarea || !resetBtn) return;
+
+  // Default fallback (must match src/settings.py DEFAULT_SETTINGS["vision_prompt"])
+  const DEFAULT_VISION_PROMPT = "Describe this image as if you're talking to someone who can't see it — be warm, vivid, and natural. Focus on what matters most in the scene.";
+
+  let _saveTimer = null;
+
+  async function loadVisionPrompt() {
+    try {
+      const res = await fetch('/api/auth/settings', { credentials: 'same-origin' });
+      const settings = await res.json();
+      textarea.value = (settings.vision_prompt && settings.vision_prompt.trim()) ? settings.vision_prompt : DEFAULT_VISION_PROMPT;
+    } catch (e) {
+      textarea.value = DEFAULT_VISION_PROMPT;
+    }
+  }
+
+  async function saveVisionPrompt(prompt) {
+    try {
+      await fetch('/api/auth/settings', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vision_prompt: prompt }),
+      });
+      if (msgEl) { msgEl.textContent = 'Saved'; msgEl.style.color = ''; }
+      setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 2000);
+    } catch (e) {
+      if (msgEl) { msgEl.textContent = 'Failed to save'; msgEl.style.color = 'var(--red)'; }
+      setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 3000);
+    }
+  }
+
+  // Load when the modal opens
+  const modal = document.getElementById('custom-preset-modal');
+  if (modal) {
+    const observer = new MutationObserver(() => {
+      if (!modal.classList.contains('hidden')) {
+        loadVisionPrompt();
+      }
+    });
+    observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  // Also load immediately in case the modal is already open
+  loadVisionPrompt();
+
+  // Debounced auto-save on input
+  textarea.addEventListener('input', () => {
+    clearTimeout(_saveTimer);
+    if (msgEl) msgEl.textContent = 'Unsaved changes...';
+    _saveTimer = setTimeout(() => {
+      saveVisionPrompt(textarea.value);
+    }, 800);
+  });
+
+  // Reset to default
+  resetBtn.addEventListener('click', () => {
+    textarea.value = DEFAULT_VISION_PROMPT;
+    saveVisionPrompt(DEFAULT_VISION_PROMPT);
+  });
+}
+
 const presetsModule = {
   init,
   loadPresets,
@@ -1104,7 +1175,8 @@ const presetsModule = {
   isPersistentChat,
   removePersistentChat,
   deactivateCharacter,
-  getInject
+  getInject,
+  initVisionPromptTab,
 };
 
 export default presetsModule;
