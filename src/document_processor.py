@@ -306,13 +306,24 @@ def _load_vl_settings() -> dict:
 def _resolve_vl_model(configured: str, owner: str | None = None) -> tuple:
     """Resolve the vision model to (url, model_id, headers).
 
-    Uses admin-configured model if set, otherwise tries auto-detection
-    of known vision-capable models across configured endpoints.
+    Uses admin-configured model if set, otherwise tries the configured
+    vision_model_fallbacks, then falls back to auto-detection of known
+    vision-capable models across configured endpoints.
     """
     from src.ai_interaction import _resolve_model
 
     if configured:
         return _resolve_model(configured, owner=owner)
+
+    # No explicit vision model — try the configured fallback chain first
+    try:
+        from src.endpoint_resolver import resolve_vision_fallback_candidates
+        candidates = resolve_vision_fallback_candidates(owner=owner)
+        for url, model, headers in candidates:
+            if url and model:
+                return url, model, headers
+    except Exception:
+        pass
 
     # Auto-detect: try known vision-capable models in priority order
     candidates = [
