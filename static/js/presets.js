@@ -605,6 +605,9 @@ export function openCustomPresetModal() {
   if (prefixInput) prefixInput.value = savedConfig.inject_prefix || '';
   if (suffixInput) suffixInput.value = savedConfig.inject_suffix || '';
 
+  // Load vision prompt (fires async fetch; populates on arrival)
+  if (window._loadVisionPromptTab) window._loadVisionPromptTab();
+
   // Track initial state to detect changes for dynamic button label
   const _snapshot = {
     name: nameInput ? nameInput.value : '',
@@ -1093,6 +1096,10 @@ export function removePersistentChat(sessionId) {
 /**
  * Initialise the Vision tab in the Prompt modal — loads the current
  * vision_prompt setting into the textarea and wires up save + reset.
+ *
+ * The vision prompt is loaded into the textarea when the modal opens
+ * (inside openCustomPresetModal) and saved on explicit button click,
+ * matching the pattern of the Persona/Inject tabs.
  */
 export function initVisionPromptTab() {
   const textarea = document.getElementById('vision-prompt-textarea');
@@ -1103,17 +1110,25 @@ export function initVisionPromptTab() {
   // Default fallback (must match src/settings.py DEFAULT_SETTINGS["vision_prompt"])
   const DEFAULT_VISION_PROMPT = "Describe this image as if you're talking to someone who can't see it — be warm, vivid, and natural. Focus on what matters most in the scene.";
 
-  let _saveTimer = null;
+  // Latch for the saved value — loaded once when the modal opens, then
+  // tracked locally so saves don't need to re-fetch.
+  let _cachedPrompt = '';
 
-  async function loadVisionPrompt() {
+  // Populated by openCustomPresetModal() so the value is ready when the
+  // modal opens, just like the character name / system prompt / injects.
+  window._loadVisionPromptTab = async function () {
     try {
       const res = await fetch('/api/auth/settings', { credentials: 'same-origin' });
       const settings = await res.json();
-      textarea.value = (settings.vision_prompt && settings.vision_prompt.trim()) ? settings.vision_prompt : DEFAULT_VISION_PROMPT;
+      _cachedPrompt = (settings.vision_prompt && settings.vision_prompt.trim())
+        ? settings.vision_prompt
+        : DEFAULT_VISION_PROMPT;
     } catch (e) {
-      textarea.value = DEFAULT_VISION_PROMPT;
+      _cachedPrompt = DEFAULT_VISION_PROMPT;
     }
-  }
+    textarea.value = _cachedPrompt;
+    if (msgEl) msgEl.textContent = '';
+  };
 
   async function saveVisionPrompt(prompt) {
     try {
@@ -1123,6 +1138,7 @@ export function initVisionPromptTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vision_prompt: prompt }),
       });
+      _cachedPrompt = prompt;
       if (msgEl) { msgEl.textContent = 'Saved'; msgEl.style.color = ''; }
       setTimeout(() => { if (msgEl) msgEl.textContent = ''; }, 2000);
     } catch (e) {
@@ -1131,27 +1147,9 @@ export function initVisionPromptTab() {
     }
   }
 
-  // Load when the modal opens
-  const modal = document.getElementById('custom-preset-modal');
-  if (modal) {
-    const observer = new MutationObserver(() => {
-      if (!modal.classList.contains('hidden')) {
-        loadVisionPrompt();
-      }
-    });
-    observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
-  }
-
-  // Also load immediately in case the modal is already open
-  loadVisionPrompt();
-
-  // Debounced auto-save on input
-  textarea.addEventListener('input', () => {
-    clearTimeout(_saveTimer);
-    if (msgEl) msgEl.textContent = 'Unsaved changes...';
-    _saveTimer = setTimeout(() => {
-      saveVisionPrompt(textarea.value);
-    }, 800);
+  // Save button click (explicit, no debounce)
+  textarea.addEventListener('change', () => {
+    saveVisionPrompt(textarea.value);
   });
 
   // Reset to default
