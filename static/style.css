@@ -38560,3 +38560,105 @@ body.theme-frosted .modal {
 .settings-modal-content .admin-card h2 {
   font-size: 16px !important;
 }
+
+/* Brain modal: make every tab use the same readable scale as Memories.
+   Skills/Add/Settings were still inheriting older 9–12px doclib/admin bits. */
+#memory-modal .memory-tab-panel,
+#memory-modal .memory-tab-panel .admin-card,
+#memory-modal .memory-tab-panel .doclib-card,
+#memory-modal .memory-tab-panel .memory-item {
+  font-size: var(--modal-small-font-size, 14px) !important;
+}
+
+#memory-modal .memory-tab-panel .admin-card h2,
+#memory-modal .memory-tab-panel h2,
+#memory-modal .memory-tab-panel h3 {
+  font-size: 16px !important;
+  line-height: 1.35;
+}
+
+#memory-modal .doclib-card-title,
+#memory-modal .skill-card-name,
+#memory-modal .memory-item-title {
+  font-size: 14px !important;
+  line-height: 1.35;
+}
+
+#memory-modal .doclib-card-header,
+#memory-modal .skill-card > .skill-card-header {
+  min-height: 50px;
+  padding: 9px 10px;
+  gap: 8px;
+}
+
+#memory-modal .doclib-card-preview,
+#memory-modal .skill-card-preview,
+#memory-modal .skill-card-preview .skill-md-pre,
+#memory-modal .doclib-card.doclib-card-expanded .doclib-card-preview pre,
+#memory-modal .doclib-card.doclib-card-expanded .doclib-card-preview .skill-md-editor {
+  font-size: 13.5px !important;
+  line-height: 1.55;
+}
+
+#memory-modal .skill-card-desc,
+#memory-modal .doclib-card-session,
+#memory-modal .doclib-card-time,
+#memory-modal .skill-stats,
+#memory-modal .memory-item-meta,
+#memory-modal .memory-cat-badge,
+#memory-modal .doclib-card-ver,
+#memory-modal .doclib-card-lang,
+#memory-modal .skill-builtin-warn,
+#memory-modal .skills-section-header,
+#memory-modal .skills-section-label,
+#memory-modal .doclib-btn-hint {
+  font-size: 12px !important;
+  line-height: 1.35;
+}
+
+#memory-modal .memory-cat-badge,
+#memory-modal .doclib-card-ver,
+#memory-modal .doclib-card-lang,
+#memory-modal .skill-model-pill,
+#memory-modal .skill-necessity-pill,
+#memory-modal .skill-stats {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+#memory-modal .doclib-card-action-btn,
+#memory-modal .doclib-card-expanded-actions > .doclib-card-action-btn,
+#memory-modal .skill-kebab-item,
+#memory-modal .memory-add-btn,
+#memory-modal .theme-io-btn {
+  font-size: 13px !important;
+}
+
+#memory-modal .memory-add-row,
+#memory-modal .memory-add-input,
+#memory-modal textarea.memory-add-input {
+  font-size: 14px !important;
+}
+
+#memory-modal .memory-add-input {
+  min-height: 30px;
+}
+
+#memory-modal .memory-add-row .theme-io-btn,
+#memory-modal .memory-add-btn {
+  min-height: 30px;
+}
+
+#memory-modal .memory-tab-panel[data-memory-panel="settings"] .admin-toggle-label,
+#memory-modal .memory-tab-panel[data-memory-panel="settings"] .admin-toggle-sub,
+#memory-modal .memory-tab-panel[data-memory-panel="settings"] label,
+#memory-modal .memory-tab-panel[data-memory-panel="settings"] input,
+#memory-modal .memory-tab-panel[data-memory-panel="settings"] select,
+#memory-modal .memory-tab-panel[data-memory-panel="settings"] button {
+  font-size: 14px !important;
+}
+
+#memory-modal .memory-tab-panel[data-memory-panel="settings"] .admin-toggle-sub {
+  font-size: 13px !important;
+  line-height: 1.45;
+}
