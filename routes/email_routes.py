@@ -3113,15 +3113,18 @@ def setup_email_routes():
                 _add(_u_url, _u_model, _u_headers)
             except Exception:
                 pass
+            # Utility fallbacks belong directly after Utility primary — if the
+            # Utility model is down, try the user's Utility backup before
+            # jumping to the Default Chat model.
+            for cand in resolve_utility_fallback_candidates(owner=owner) or []:
+                _add(*cand)
             # Primary default chat endpoint — last working chat config.
             try:
                 _d_url, _d_model, _d_headers = resolve_endpoint("default", owner=owner)
                 _add(_d_url, _d_model, _d_headers)
             except Exception:
                 pass
-            # Configured fallback chains last.
-            for cand in resolve_utility_fallback_candidates(owner=owner) or []:
-                _add(*cand)
+            # Default chat fallback chain last.
             for cand in resolve_chat_fallback_candidates(owner=owner) or []:
                 _add(*cand)
             try:

@@ -1113,16 +1113,12 @@ def setup_task_routes(task_scheduler) -> APIRouter:
             "use cron '0 H * * 1-5'. Keep the prompt actionable and self-contained."
         )
         try:
-            url, model, headers = resolve_endpoint("utility", owner=user or None)
-            if not url:
-                url, model, headers = resolve_endpoint("default", owner=user or None)
-            if not (url and model):
-                return {"success": False, "message": "No model endpoint configured"}
-            raw = await llm_call_async(
-                url=url, model=model,
+            from src.task_endpoint import task_llm_call_async
+            raw = await task_llm_call_async(
                 messages=[{"role": "system", "content": sys},
                           {"role": "user", "content": desc[:1000]}],
-                temperature=0.2, max_tokens=400, headers=headers, timeout=45,
+                temperature=0.2, max_tokens=400, timeout=45,
+                owner=user or None,
             )
             text = _strip_think(raw or "", prose=False, prompt_echo=False).strip()
             if text.startswith("```"):

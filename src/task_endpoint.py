@@ -29,8 +29,8 @@ def resolve_task_candidates(
     Order:
     1. configured Background Tasks endpoint/model, or caller fallback
     2. Utility endpoint/model
-    3. Default endpoint/model
-    4. Utility fallback chain
+    3. Utility fallback chain
+    4. Default endpoint/model
     5. Default fallback chain
     """
     candidates = []
@@ -45,9 +45,9 @@ def resolve_task_candidates(
 
     _append(*resolve_task_endpoint(fallback_url, fallback_model, fallback_headers, owner=owner))
     _append(*resolve_endpoint("utility", owner=owner))
-    _append(*resolve_endpoint("default", owner=owner))
     for url, model, headers in resolve_utility_fallback_candidates(owner=owner):
         _append(url, model, headers)
+    _append(*resolve_endpoint("default", owner=owner))
     for url, model, headers in resolve_chat_fallback_candidates(owner=owner):
         _append(url, model, headers)
 

@@ -313,9 +313,14 @@ def _resolve_vl_model(configured: str, owner: str | None = None) -> tuple:
     from src.ai_interaction import _resolve_model
 
     if configured:
-        return _resolve_model(configured, owner=owner)
+        try:
+            return _resolve_model(configured, owner=owner)
+        except Exception as e:
+            logger.warning("Configured vision model %r could not be resolved; trying Vision fallbacks: %s", configured, e)
 
-    # No explicit vision model — try the configured fallback chain first
+    # No explicit vision model — or the explicit one is stale/offline. Try the
+    # configured fallback chain before auto-detection so Settings → Vision →
+    # Fallbacks behaves as the UI implies.
     try:
         from src.endpoint_resolver import resolve_vision_fallback_candidates
         candidates = resolve_vision_fallback_candidates(owner=owner)

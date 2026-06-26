@@ -562,23 +562,29 @@ def setup_history_routes(session_manager) -> APIRouter:
                 for m in older
             )
 
-            # Use utility model if available
-            util_url, util_model, util_headers = resolve_endpoint("utility", owner=owner or None)
-            compact_url = util_url or session.endpoint_url
-            compact_model = util_model or session.model
-            compact_headers = util_headers if util_url else session.headers
+            # Use the Utility candidate chain so Utility fallbacks actually
+            # apply to compaction; include the active session model as an
+            # immediate fallback if Utility is unset/unavailable.
+            from src.task_endpoint import resolve_task_candidates
+            from src.llm_core import llm_call_async_with_fallback
+            compact_candidates = resolve_task_candidates(
+                fallback_url=session.endpoint_url,
+                fallback_model=session.model,
+                fallback_headers=session.headers,
+                owner=owner or None,
+            )
 
             from src.context_compactor import SELF_SUMMARY_SYSTEM_PROMPT
             compaction_count = sum(1 for m in session.history if isinstance(m, ChatMessage) and "[Conversation summary" in (m.content or ""))
             sys_prompt = SELF_SUMMARY_SYSTEM_PROMPT.replace("{count}", str(len(older))).replace("{n}", str(compaction_count + 1))
-            summary = await llm_call_async(
-                compact_url, compact_model,
+            summary = await llm_call_async_with_fallback(
+                compact_candidates,
                 [
                     {"role": "system", "content": sys_prompt},
                     {"role": "user", "content": convo_text},
                 ],
                 temperature=0.2, max_tokens=1024,
-                headers=compact_headers, timeout=30,
+                timeout=30,
             )
 
             # Replace session history: summary as system message + recent messages

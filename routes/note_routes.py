@@ -207,23 +207,19 @@ async def dispatch_reminder(
     _SYNTH_FAILED_TAG = "[utility model unavailable — no summary generated]"
     if llm_on:
         try:
-            from src.endpoint_resolver import resolve_endpoint
-            from src.llm_core import llm_call_async
+            from src.task_endpoint import task_llm_call_async
             from src.reminder_personas import synthesis_system_prompt
-            url, model, headers = resolve_endpoint("utility", owner=owner or None)
-            if not url:
-                url, model, headers = resolve_endpoint("default", owner=owner or None)
-            if url and model:
-                persona_id = (settings.get("reminder_llm_persona") or "").strip()
-                sys_prompt = synthesis_system_prompt(persona_id)
-                raw = await llm_call_async(
-                    url=url, model=model,
-                    messages=[
-                        {"role": "system", "content": sys_prompt},
-                        {"role": "user", "content": f"Title: {title}\n\n{note_body}".strip()},
-                    ],
-                    temperature=0.7, max_tokens=200, headers=headers, timeout=30,
-                )
+            persona_id = (settings.get("reminder_llm_persona") or "").strip()
+            sys_prompt = synthesis_system_prompt(persona_id)
+            raw = await task_llm_call_async(
+                messages=[
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": f"Title: {title}\n\n{note_body}".strip()},
+                ],
+                temperature=0.7, max_tokens=200, timeout=30,
+                owner=owner or None,
+            )
+            if raw:
                 from src.text_helpers import strip_think as _strip_think
                 # prose=True strips untagged "The user wants me to…" chain-of-thought.
                 # prompt_echo=True strips Qwen-style "Thinking Process:" / leaked

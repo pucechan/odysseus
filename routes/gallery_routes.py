@@ -1849,9 +1849,10 @@ def setup_gallery_routes() -> APIRouter:
             if not chat_url:
                 return {"error": "No vision-capable endpoint configured"}
 
-            # Call vision model — format differs between Anthropic and OpenAI
+            # Call vision model — format differs between Anthropic and OpenAI.
+            # Unlike the old path, honor Settings → Vision → Fallbacks here too.
+            from src.endpoint_resolver import resolve_vision_fallback_candidates
             from src.llm_core import _detect_provider, _restricts_temperature, _uses_max_completion_tokens
-            provider = _detect_provider(chat_url)
             tag_prompt = (
                 "Analyze this photo. Return ONLY a comma-separated list of tags. "
                 "Include: objects, people (describe by appearance — age range, gender), "
@@ -1860,54 +1861,80 @@ def setup_gallery_routes() -> APIRouter:
                 "Be specific but concise. 10-25 tags. No explanation, just tags."
             )
 
-            if provider == "anthropic":
-                payload = {
-                    "model": model_name,
-                    "max_tokens": 200,
-                    "messages": [{
-                        "role": "user",
-                        "content": [
-                            {"type": "image", "source": {
-                                "type": "base64", "media_type": mime, "data": b64,
-                            }},
-                            {"type": "text", "text": tag_prompt},
-                        ],
-                    }],
-                }
-            else:
-                _tok_key = "max_completion_tokens" if _uses_max_completion_tokens(model_name) else "max_tokens"
-                payload = {
-                    "model": model_name,
-                    "messages": [{
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": tag_prompt},
-                            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
-                        ],
-                    }],
-                    _tok_key: 200,
-                    "temperature": 0.3,
-                }
-                # Reasoning models (o1/o3/o4/gpt-5) reject an explicit temperature.
-                if _restricts_temperature(model_name):
-                    payload.pop("temperature", None)
+            seen = set()
+            candidates = []
+            for cand in [(chat_url, model_name, headers)] + resolve_vision_fallback_candidates(owner=user):
+                if not cand or not cand[0] or not cand[1]:
+                    continue
+                key = (cand[0], cand[1])
+                if key in seen:
+                    continue
+                seen.add(key)
+                candidates.append(cand)
 
-            h = {"Content-Type": "application/json"}
-            if headers:
-                h.update(headers)
-
+            content = ""
+            last_error = ""
             async with httpx.AsyncClient(timeout=60) as client:
-                resp = await client.post(chat_url, json=payload, headers=h)
-                if resp.status_code != 200:
-                    body = resp.text[:500]
-                    logger.error(f"Vision model {resp.status_code}: {body}")
-                    return {"error": f"Vision model returned {resp.status_code}: {body[:200]}"}
-                data = resp.json()
-                # Anthropic returns content[0].text, OpenAI returns choices[0].message.content
-                if provider == "anthropic":
-                    content = (data.get("content") or [{}])[0].get("text", "")
-                else:
-                    content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                for _url, _model, _headers in candidates:
+                    provider = _detect_provider(_url)
+                    if provider == "anthropic":
+                        payload = {
+                            "model": _model,
+                            "max_tokens": 200,
+                            "messages": [{
+                                "role": "user",
+                                "content": [
+                                    {"type": "image", "source": {
+                                        "type": "base64", "media_type": mime, "data": b64,
+                                    }},
+                                    {"type": "text", "text": tag_prompt},
+                                ],
+                            }],
+                        }
+                    else:
+                        _tok_key = "max_completion_tokens" if _uses_max_completion_tokens(_model) else "max_tokens"
+                        payload = {
+                            "model": _model,
+                            "messages": [{
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": tag_prompt},
+                                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
+                                ],
+                            }],
+                            _tok_key: 200,
+                            "temperature": 0.3,
+                        }
+                        # Reasoning models (o1/o3/o4/gpt-5) reject an explicit temperature.
+                        if _restricts_temperature(_model):
+                            payload.pop("temperature", None)
+
+                    h = {"Content-Type": "application/json"}
+                    if _headers:
+                        h.update(_headers)
+                    try:
+                        resp = await client.post(_url, json=payload, headers=h)
+                        if resp.status_code != 200:
+                            body = resp.text[:500]
+                            last_error = f"{_model} returned {resp.status_code}: {body[:200]}"
+                            logger.warning("[vision fallback] gallery tag candidate failed: %s", last_error)
+                            continue
+                        data = resp.json()
+                        # Anthropic returns content[0].text, OpenAI returns choices[0].message.content
+                        if provider == "anthropic":
+                            content = (data.get("content") or [{}])[0].get("text", "")
+                        else:
+                            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                        if content:
+                            break
+                        last_error = f"{_model} returned empty content"
+                    except Exception as e:
+                        last_error = f"{_model} failed: {e}"
+                        logger.warning("[vision fallback] gallery tag candidate failed: %s", last_error)
+                        continue
+
+            if not content:
+                return {"error": last_error or "No vision fallback candidate produced tags"}
 
             # Clean up tags
             tags = [t.strip().lower() for t in content.split(",") if t.strip()]
