@@ -508,7 +508,6 @@ def setup_chat_routes(
         # Did the USER explicitly pick agent mode? (vs. us auto-escalating
         # below). Skill extraction should only learn from real agent sessions,
         # not chats we quietly promoted for a notes/calendar intent.
-        force_tools = str(form_data.get("force_tools", "")).lower() == "true"
         user_requested_agent = (chat_mode == "agent")
         # Intent auto-escalation: if the user is clearly asking the assistant
         # to create a todo, reminder, or calendar event, promote chat → agent
@@ -1264,6 +1263,9 @@ def setup_chat_routes(
                         _max_rounds = _DEFAULT_ROUNDS
                     _max_rounds = max(1, min(_max_rounds, 200))
 
+                    _forced_tools = None
+                    if allow_web_search is not None and str(allow_web_search).lower() == "true":
+                        _forced_tools = {"web_search", "web_fetch"}
 
                     async for chunk in stream_agent_loop(
                         sess.endpoint_url,
@@ -1277,6 +1279,7 @@ def setup_chat_routes(
                         max_rounds=_max_rounds,
                         context_length=ctx.context_length,
                         active_document=active_doc,
+                        active_email=active_email_ctx,
                         session_id=session,
                         disabled_tools=disabled_tools if disabled_tools else None,
                         tool_policy=tool_policy,
@@ -1285,7 +1288,7 @@ def setup_chat_routes(
                         plan_mode=plan_mode,
                         approved_plan=approved_plan or None,
                         workspace=workspace or None,
-                        force_tools=force_tools,
+                        forced_tools=_forced_tools,
                     ):
                         if chunk.startswith("data: ") and not chunk.startswith("data: [DONE]"):
                             try:
