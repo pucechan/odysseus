@@ -72,6 +72,9 @@
   --sidebar-section-font-size: 12px;
   --chat-font-size: 1.05rem;
   --composer-font-size: 15.5px;
+  --modal-font-size: 15px;
+  --modal-control-font-size: 13.5px;
+  --modal-small-font-size: 13px;
 }
 
 :root.light {
@@ -5144,7 +5147,7 @@ body.bg-pattern-sparkles {
       background:var(--panel);
       border:1px solid var(--border);
       width:min(520px, 92vw); max-height:85vh; padding:10px;
-      box-sizing:border-box; font-size:14px;
+      box-sizing:border-box; font-size:var(--modal-font-size, 15px);
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       letter-spacing: -0.015em;
       display:flex; flex-direction:column;
@@ -38347,4 +38350,95 @@ body.theme-frosted .modal {
 }
 .log-line-default {
   color: var(--fg, #9cdef2);
+}
+
+/* Readability sizing for Settings + modal interiors. Keep the app compact,
+   but let dialogs inherit the same less-squinty direction as chat/sidebar. */
+.modal-content,
+.settings-modal-content,
+.memory-modal-content,
+.tasks-modal-content,
+.doclib-modal-content,
+.gallery-modal-content,
+.email-reader-tab-modal .modal-content {
+  font-size: var(--modal-font-size, 15px) !important;
+}
+
+.modal-header h4,
+.settings-modal-content .modal-header h4,
+.memory-modal-content .modal-header h4,
+.doclib-modal-content .modal-header h4,
+.email-reader-tab-modal .modal-header h4 {
+  font-size: 1.08rem !important;
+}
+
+.modal-body,
+.settings-panels,
+.settings-layout,
+.admin-card,
+.memory-modal-content .modal-body,
+.tasks-modal-content .modal-body,
+.doclib-modal-content .modal-body,
+.gallery-modal-content .modal-body {
+  font-size: inherit;
+}
+
+.modal-content input,
+.modal-content select,
+.modal-content textarea,
+.modal-content button,
+.settings-modal-content input,
+.settings-modal-content select,
+.settings-modal-content textarea,
+.settings-modal-content button,
+.memory-modal-content input,
+.memory-modal-content select,
+.memory-modal-content textarea,
+.memory-modal-content button {
+  font-size: var(--modal-control-font-size, 13.5px);
+}
+
+.settings-nav-item,
+.settings-label,
+.shortcut-label,
+.admin-toggle-label,
+.admin-user-name,
+.adm-provider-btn,
+.adm-provider-item,
+.settings-select,
+.settings-input,
+.mcp-tools-search {
+  font-size: var(--modal-small-font-size, 13px) !important;
+}
+
+.admin-card h2 {
+  font-size: 15px !important;
+}
+
+.admin-toggle-sub,
+.shortcut-row,
+.mcp-tools-list label,
+.priv-models-list label,
+.adm-quickstart-toggle,
+.search-fb-chip,
+.search-fb-add,
+.settings-fallback-num {
+  font-size: 12px !important;
+}
+
+.settings-sidebar-label,
+.shortcut-category,
+.admin-priv-section,
+.mcp-tools-panel .mcp-tools-header span:first-child,
+.mcp-tools-panel .mcp-tools-header a,
+.priv-models-all,
+.priv-models-none,
+.shortcut-hint,
+.shortcut-key kbd,
+.shortcut-unset,
+.theme-opacity-label,
+.settings-system-logs-autopoll-container,
+#log-console-container,
+.log-line {
+  font-size: 11px !important;
 }
