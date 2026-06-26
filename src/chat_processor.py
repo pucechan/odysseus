@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from src.chat_helpers import extract_urls
 from src.youtube_handler import is_youtube_url
 from src.search import comprehensive_web_search, fetch_webpage_content
-from src.prompt_security import UNTRUSTED_CONTEXT_POLICY, untrusted_context_message
+from src.prompt_security import untrusted_context_message
 
 logger = logging.getLogger(__name__)
 
@@ -198,10 +198,10 @@ class ChatProcessor:
                 "role": "system",
                 "content": preset_system_prompt
             })
-        preface.append({
-            "role": "system",
-            "content": UNTRUSTED_CONTEXT_POLICY,
-        })
+        # Do not add a blanket prompt-safety policy to every turn: it makes
+        # lightweight chat noisy and can make models treat skill/tool guidance
+        # as "not instructions". Actual retrieved/external blocks below are
+        # still wrapped with untrusted_context_message() at the point of use.
 
         # Memory: pinned (always included) + extended (RAG-retrieved when relevant)
         self._last_used_memories = []  # track what was injected
@@ -322,12 +322,16 @@ class ChatProcessor:
                 by_cat: Dict[str, list] = {}
                 for s in idx:
                     by_cat.setdefault(s.get("category") or "general", []).append(s)
-                lines = ["[Available skills — call manage_skills(action='view', name='...') to load one when relevant]"]
+                lines = ["Available skills — use manage_skills(action='search', query='...') or manage_skills(action='view', name='...') to load the full procedure when relevant."]
                 for cat in sorted(by_cat):
                     lines.append(f"  {cat}:")
                     for s in sorted(by_cat[cat], key=lambda x: x["name"]):
                         desc = s.get("description") or ""
                         lines.append(f"    - {s['name']}: {desc}" if desc else f"    - {s['name']}")
-                preface.append(untrusted_context_message("available skills index", "\n".join(lines)))
+                preface.append({
+                    "role": "user",
+                    "content": "Skill routing index:\n" + "\n".join(lines),
+                    "metadata": {"trusted": True, "source": "available skills index"},
+                })
 
         return preface, rag_sources, web_sources

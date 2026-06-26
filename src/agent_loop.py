@@ -658,6 +658,7 @@ def _build_system_prompt(
     messages: List[Dict],
     model: str,
     active_document,
+    active_email,
     mcp_mgr,
     disabled_tools: Optional[Set[str]] = None,
     needs_admin: bool = False,
@@ -671,6 +672,7 @@ def _build_system_prompt(
     global _cached_base_prompt, _cached_base_prompt_key
     if suppress_local_context:
         active_document = None
+        active_email = None
 
     # With RAG tools, cache key includes the selected tools
     _rt_key = frozenset(relevant_tools) if relevant_tools else None
@@ -730,12 +732,13 @@ def _build_system_prompt(
     except Exception:
         pass
 
-    # Document context is kept as a SEPARATE message (not merged into the tool
-    # prompt) so the context trimmer doesn't destroy it when truncating the
+    # Document/email context is kept as SEPARATE messages (not merged into the
+    # tool prompt) so the context trimmer doesn't destroy it when truncating the
     # massive tool-description system prompt.
     _doc_message = None
-    # Skill index is now in the system prompt via _build_base_prompt.
-    # Full procedures fetched on-demand via `manage_skills search`.
+    _email_message = None
+    # Skill index is supplied separately by build_chat_context(); full
+    # procedures are fetched on-demand via `manage_skills search`.
     if active_document:
         set_active_document(active_document.id)
         _doc_raw = active_document.current_content or ""
@@ -851,6 +854,31 @@ def _build_system_prompt(
     else:
         set_active_document(None)
 
+    if active_email and isinstance(active_email, dict) and active_email.get("uid"):
+        _parts = [
+            "ACTIVE EMAIL READER CONTEXT (the user has this email open right now)",
+            f"UID: {active_email.get('uid')}",
+            f"Folder: {active_email.get('folder') or 'INBOX'}",
+        ]
+        if active_email.get("account"):
+            _parts.append(f"Account: {active_email.get('account')}")
+        if active_email.get("subject"):
+            _parts.append(f"Subject: {active_email.get('subject')}")
+        if active_email.get("from"):
+            _parts.append(f"From: {active_email.get('from')}")
+        if active_email.get("body_preview"):
+            _parts.append("Body preview:\n" + str(active_email.get("body_preview"))[:2000])
+        _parts.append(
+            "For requests like 'this email', 'reply', 'summarize this', or 'open a reply', "
+            "use this UID/folder/account. Do not invent UID 1."
+        )
+        _email_message = {
+            "role": "user",
+            "content": "\n".join(_parts),
+            "metadata": {"trusted": True, "source": "active email context"},
+            "_protected": True,
+        }
+
     # Inject writing style for any email writing path. This is deliberately
     # broader than read/list: models may compose via send_email, reply_to_email,
     # or ui_control open_email_reply after the first tool round.
@@ -919,8 +947,9 @@ def _build_system_prompt(
     # few. If the teacher wrote a procedure for "open my X chat" last
     # time the student failed, this is where the student finds it
     # before deciding which tool to call.
-    # Skill index is now in the system prompt via _build_base_prompt.
-    # Full procedures are fetched on-demand via `manage_skills search`.
+    # The lightweight skill index is provided by build_chat_context() as
+    # separate context in agent mode. Full procedures are fetched on-demand
+    # via `manage_skills search`.
 
     agent_msg = {"role": "system", "content": agent_prompt}
     insert_idx = 0
@@ -956,6 +985,9 @@ def _build_system_prompt(
     if _doc_message:
         merged.insert(last_user_idx, _doc_message)
         last_user_idx += 1  # the document message is now at last_user_idx
+    if _email_message:
+        merged.insert(last_user_idx, _email_message)
+        last_user_idx += 1
     if _datetime_message:
         merged.insert(last_user_idx, _datetime_message)
 
@@ -1011,46 +1043,11 @@ def _build_base_prompt(
         elif compact:
             agent_prompt = _assemble_prompt(set(TOOL_SECTIONS.keys()), disabled, compact=True)
 
-    # Inject the Level-0 skill index — one line per skill so the agent
-    # knows what canonical procedures exist. Includes published skills
-    # plus teacher-escalation drafts (auto-written when the student
-    # fails a task; appear here on the very next turn so the student
-    # can apply them immediately). Full SKILL.md fetched on demand via
-    # `manage_skills view name=...`. Gating mirrors index_for: platform
-    # + requires_toolsets + fallback_for_toolsets.
-    #
-    # SECURITY: skill `name` and `description` are user-editable, so the
-    # index block is returned SEPARATELY (not appended to agent_prompt).
-    # The caller wraps it in untrusted_context_message and ships it as a
-    # user-role message — same treatment as the matched-skills block.
-    # Inject the Level-0 skill index directly into the system prompt so the
-    # agent always has a browsable catalogue of capabilities. Skill content
-    # (name, description) is user-editable but only the index goes here;
-    # full procedures are fetched on-demand via `manage_skills search`.
-    if not suppress_local_context:
-        try:
-            from services.memory.skills import SkillsManager
-            from src.constants import DATA_DIR
-            _sm = SkillsManager(DATA_DIR)
-            active_tools = list(set(TOOL_SECTIONS.keys()) - set(disabled or []))
-            skill_idx = _sm.index_for(owner=owner, active_toolsets=active_tools)
-            if skill_idx:
-                lines = ["## Available skills",
-                         "Use `manage_skills search` with a query to find and load a skill's "
-                         "full procedure when one seems relevant. Entries tagged `(draft)` were "
-                         "written by the teacher loop after a prior failure."]
-                by_cat: dict[str, list] = {}
-                for s in skill_idx:
-                    by_cat.setdefault(s["category"], []).append(s)
-                for cat in sorted(by_cat):
-                    lines.append(f"\n**{cat}**")
-                    for s in by_cat[cat]:
-                        badge = " *(draft)*" if s.get("status") == "draft" else ""
-                        lines.append(f"- `{s['name']}` — {s['description']}{badge}")
-                agent_prompt += "\n\n" + "\n".join(lines)
-        except Exception as _e:
-            # Skill index is a soft enhancement — never fail prompt assembly on it.
-            logger.debug(f"Skill-index injection skipped: {_e}")
+    # Skill index is intentionally NOT appended to the system prompt here.
+    # build_chat_context() injects the lightweight skills catalogue as a
+    # separate routing context message in agent mode, and full procedures are
+    # fetched on demand via manage_skills. Keeping user-editable skill text out
+    # of agent_prompt preserves the slim, stable tool prompt.
 
     # Inject integration descriptions
     if not suppress_local_context:
@@ -1455,6 +1452,7 @@ async def stream_agent_loop(
     max_tool_calls: int = 0,
     context_length: int = 0,
     active_document=None,
+    active_email: Optional[Dict[str, Any]] = None,
     session_id: Optional[str] = None,
     disabled_tools: Optional[Set[str]] = None,
     owner: Optional[str] = None,
@@ -1466,6 +1464,7 @@ async def stream_agent_loop(
     workspace: Optional[str] = None,
     _is_teacher_run: bool = False,
     force_tools: bool = False,
+    forced_tools: Optional[Set[str]] = None,
 ) -> AsyncGenerator[str, None]:
     """Streaming agent loop generator.
 
@@ -1619,6 +1618,9 @@ async def stream_agent_loop(
     if _relevant_tools is not None and active_document is not None:
         _relevant_tools.update({"edit_document", "update_document", "suggest_document"})
 
+    if forced_tools and _relevant_tools is not None:
+        _relevant_tools.update(forced_tools)
+
     if _relevant_tools is not None:
         logger.info("[agent-intent] selected_tools=%s", sorted(_relevant_tools)[:50])
 
@@ -1692,7 +1694,7 @@ async def stream_agent_loop(
     else:
         _is_api_model = any(h in endpoint_url for h in _API_HOSTS) or _model_supports_tools
     messages, mcp_schemas = _build_system_prompt(
-        messages, model, active_document, mcp_mgr, disabled_tools,
+        messages, model, active_document, active_email, mcp_mgr, disabled_tools,
         needs_admin=_needs_admin, relevant_tools=_relevant_tools,
         mcp_disabled_map=_mcp_disabled_map,
         compact=_is_api_model,
