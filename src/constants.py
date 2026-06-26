@@ -81,6 +81,10 @@ WEB_FETCH_USER_AGENT = os.environ.get(
     "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
 )
 
+# Web fetch content budget (services/search/content.py caps streaming downloads)
+WEB_FETCH_SOFT_MAX_BYTES = 2_000_000    # default download budget (2 MB)
+WEB_FETCH_HARD_MAX_BYTES = 20_000_000   # absolute ceiling, even with override (20 MB)
+
 
 # Cleanup configuration
 CLEANUP_ENABLED = os.getenv("CLEANUP_ENABLED", "True").lower() == "true"
