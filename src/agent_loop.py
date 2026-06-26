@@ -1061,7 +1061,7 @@ def _build_base_prompt(
         # When browser tools are disabled, suppress their descriptions too
         # so the model doesn't read about tools it can't call.
         _mcp_disabled_for_prompt = dict(mcp_disabled_map or {})
-        if disabled_tools and "browser_tools" in disabled_tools:
+        if disabled_tools and ({"browser_tools", "builtin_browser"} & set(disabled_tools)):
             # Collect all tool names for the builtin_browser server into the
             # disabled map so get_tool_descriptions_for_prompt filters them.
             _mcp_disabled_for_prompt.setdefault("builtin_browser", set())
@@ -1903,7 +1903,7 @@ async def stream_agent_loop(
                     t for t in all_tool_schemas
                     if t.get("function", {}).get("name") not in disabled_tools
                     and t.get("name") not in disabled_tools
-                    and not ("browser_tools" in disabled_tools
+                    and not (({"browser_tools", "builtin_browser"} & set(disabled_tools))
                              and t.get("function", {}).get("name", "").startswith("mcp__builtin_browser__"))
                 ]
                 _after_names = {t.get("function", {}).get("name") for t in all_tool_schemas if t.get("function")}
@@ -1919,7 +1919,7 @@ async def stream_agent_loop(
 
         _tool_names_sent = [t.get("function", {}).get("name") for t in (all_tool_schemas or []) if t.get("function")]
         _browser_tools = [n for n in _tool_names_sent if 'builtin_browser' in n]
-        logger.info(f"[agent-debug] round={round_num} model={model} _is_api_model={_is_api_model} tools_sent={len(_tool_names_sent)} tool_names={_tool_names_sent[:15]} browser_tools={len(_browser_tools)} browser_tools_disabled={'browser_tools' in disabled_tools} relevant_tools={sorted(_relevant_tools)[:15] if _relevant_tools else 'ALL'}")
+        logger.info(f"[agent-debug] round={round_num} model={model} _is_api_model={_is_api_model} tools_sent={len(_tool_names_sent)} tool_names={_tool_names_sent[:15]} browser_tools={len(_browser_tools)} browser_tools_disabled={bool({'browser_tools', 'builtin_browser'} & set(disabled_tools))} relevant_tools={sorted(_relevant_tools)[:15] if _relevant_tools else 'ALL'}")
 
         # Primary target + any configured fallback models. stream_llm_with_fallback
         # only switches on a pre-content failure, so streamed output is never

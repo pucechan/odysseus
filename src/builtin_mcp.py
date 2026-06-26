@@ -76,14 +76,17 @@ _BUILTIN_SERVERS = {
     "email":      ("mcp_servers/email_server.py",      "Built-in: Email"),
 }
 
-# NPX-based built-in servers (run via npx, not Python)
-_BUILTIN_NPX_SERVERS = {
-    "builtin_browser": {
+# NPX-based built-in servers (run via npx, not Python).
+# Browser automation used to be auto-registered here via @playwright/mcp. Keep
+# it opt-in only: exposing a full browser-control MCP server by default bloats
+# the prompt/tool schema set and contradicts the slim-tool design.
+_BUILTIN_NPX_SERVERS = {}
+if os.environ.get("ODYSSEUS_ENABLE_BROWSER_MCP", "").lower() in ("1", "true", "yes"):
+    _BUILTIN_NPX_SERVERS["builtin_browser"] = {
         "name": "Built-in: Browser",
         "command": "npx",
         "args": ["-y", "@playwright/mcp@latest", "--headless", "--caps", "vision"],
     }
-}
 
 # Global flag to disable MCP if there are compatibility issues
 MCP_DISABLED = os.environ.get("ODYSSEUS_DISABLE_MCP", "").lower() in ("1", "true", "yes")
@@ -125,7 +128,11 @@ async def register_builtin_servers(mcp_manager):
             continue
         asyncio.create_task(_connect_python_server(server_id, script_path, name))
 
-    # Register NPX-based servers in the background (they take longer to start)
+    # Register opt-in NPX-based servers in the background (they take longer to start)
+    if not _BUILTIN_NPX_SERVERS:
+        logger.info("No built-in NPX MCP servers enabled")
+        return
+
     npx_path = _find_npx()
     logger.info(f"NPX binary resolved to: {npx_path}")
 
