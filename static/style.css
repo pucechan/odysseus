@@ -2329,6 +2329,9 @@ body.bg-pattern-sparkles {
        queries so it responds to *bar width*, not viewport width (the bar
        can be in a split pane). */
     .chat-input-bar { container-type: inline-size; container-name: chatbar; }
+    @container chatbar (max-width: 420px) {
+      .chat-input-right .strict-tools-toggle { display: none !important; }
+    }
     @container chatbar (max-width: 340px) {
       .chat-input-right .mode-toggle { display: none !important; }
     }
@@ -2729,6 +2732,57 @@ body.bg-pattern-sparkles {
     }
     .mode-toggle-btn + .mode-toggle-btn {
       border-left: none;
+    }
+    .strict-tools-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 28px;
+      padding: 0 8px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: color-mix(in srgb, var(--fg) 62%, transparent);
+      font-size: 10.5px;
+      line-height: 1;
+      user-select: none;
+      cursor: pointer;
+      white-space: nowrap;
+      background: color-mix(in srgb, var(--panel) 55%, transparent);
+    }
+    .strict-tools-toggle:hover {
+      color: var(--fg);
+      border-color: color-mix(in srgb, var(--accent, var(--red)) 40%, var(--border));
+    }
+    .strict-tools-toggle input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .strict-tools-box {
+      width: 11px;
+      height: 11px;
+      border: 1px solid color-mix(in srgb, var(--fg) 45%, transparent);
+      border-radius: 3px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .strict-tools-toggle input:checked + .strict-tools-box {
+      background: var(--accent, var(--red));
+      border-color: var(--accent, var(--red));
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, var(--red)) 14%, transparent);
+    }
+    .strict-tools-toggle input:checked + .strict-tools-box::after {
+      content: '✓';
+      color: var(--bg);
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .strict-tools-toggle:has(input:checked) {
+      color: var(--fg);
+      background: color-mix(in srgb, var(--accent, var(--red)) 10%, transparent);
     }
     @media (max-width: 768px) {
       .mode-toggle.mode-toggle-three [data-llama-mode="unified"] > span {

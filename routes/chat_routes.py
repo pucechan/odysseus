@@ -490,6 +490,7 @@ def setup_chat_routes(
         # manual form posts that still send plan_mode=true.
         plan_mode = False
         chat_mode = str(form_data.get("mode", "")).lower()  # 'chat' or 'agent'
+        force_tools = str(form_data.get("force_tools", "")).lower() == "true"
         # Workspace: confine the agent's file/shell tools to this folder.
         workspace, workspace_rejected = _resolve_request_workspace(
             request, form_data.get("workspace")
@@ -1288,6 +1289,7 @@ def setup_chat_routes(
                         plan_mode=plan_mode,
                         approved_plan=approved_plan or None,
                         workspace=workspace or None,
+                        force_tools=force_tools,
                         forced_tools=_forced_tools,
                     ):
                         if chunk.startswith("data: ") and not chunk.startswith("data: [DONE]"):

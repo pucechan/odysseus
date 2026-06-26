@@ -1593,6 +1593,15 @@ function initializeEventListeners() {
     if (!agentBtn || !chatBtn) return;
     const state = loadToggleState();
     let currentMode = state.mode || 'chat';
+    const strictTools = el('strict-tools-toggle');
+    if (strictTools) {
+      strictTools.checked = !!state.force_tools;
+      strictTools.addEventListener('change', () => {
+        const st = loadToggleState();
+        st.force_tools = !!strictTools.checked;
+        saveToggleState(st);
+      });
+    }
 
     // Immediately hide bash button in chat mode on page load
     if (currentMode === 'chat') {
