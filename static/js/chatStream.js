@@ -57,10 +57,6 @@ export function handleUIControl(uiData) {
       document.querySelectorAll('[data-mode-tool]').forEach(function(b) {
         b.style.display = modeVal === 'agent' ? '' : 'none';
       });
-      var strictLabel = document.getElementById('strict-tools-label');
-      if (strictLabel) {
-        strictLabel.style.display = modeVal === 'agent' ? 'inline-flex' : 'none';
-      }
 
     } else if (uiEvent === 'switch_model' || uiData.ui_event === 'switch_model') {
       var modelDisplay = document.querySelector('.current-model-name, #current-model');
@@ -189,7 +185,7 @@ export function handleUIControl(uiData) {
     } else if (uiEvent === 'open_email_reply' || uiData.ui_event === 'open_email_reply') {
       import('./emailInbox.js').then(function(mod) {
         var fn = mod.openReplyDraft || (mod.default && mod.default.openReplyDraft);
-        if (fn) fn(uiData.uid, uiData.folder || 'INBOX', uiData.mode || 'reply');
+        if (fn) fn(uiData.uid, uiData.folder || 'INBOX', uiData.mode || 'reply', uiData.body || '');
       }).catch(function(e) {
         console.warn('open_email_reply failed:', e);
       });
