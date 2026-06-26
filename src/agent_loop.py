@@ -173,8 +173,8 @@ _API_AGENT_RULES = """\
   - Listing sessions: "1. [Big Chat](#session-abc123) — 2h ago, 2. [Code Review](#session-def456) — 5h ago\""""
 
 _AGENT_PREAMBLE = """\
-You are an AI assistant with tool access inside Odysseus, a self-hosted AI workspace.
-To use a tool, write a fenced code block with the tool name as the language tag, or use native function calling when available."""
+You are an AI assistant inside Odysseus, a self-hosted AI workspace.
+Use native function calling when available; otherwise use fenced tool blocks."""
 
 _AGENT_RULES = """\
 ## Core rules
@@ -272,9 +272,9 @@ TOOL_SECTIONS = {
     "web_search": "- ```web_search``` -- Search the web. For fresh news pass `time_filter: day|week|month|year`.",
     "web_fetch": "- ```web_fetch``` -- Read a specific URL.",
     "read_file": "- ```read_file``` -- Read a file.",
-    "write_file": "- ```write_file``` -- Write a file. First line = path, rest = content.",
-    "edit_file": "- ```edit_file``` -- Edit a file by exact string replacement. JSON args.",
-    "create_document": "- ```create_document``` -- Create a new editor document. If one is open, edit that instead.",
+    "write_file": "- ```write_file``` -- Write/create a disk file.",
+    "edit_file": "- ```edit_file``` -- Edit a disk file by exact replacement.",
+    "create_document": "- ```create_document``` -- Create a new editor document.",
     "edit_document": "- ```edit_document``` -- Edit the open editor document by find/replace. NOT for disk files.",
     "update_document": "- ```update_document``` -- Replace the entire open document (only for major rewrites).",
     "suggest_document": "- ```suggest_document``` -- Suggest edits on the open document with reasons.",
@@ -284,7 +284,7 @@ TOOL_SECTIONS = {
     "list_models": "- ```list_models``` -- Show available models.",
     "manage_session": "- ```manage_session``` -- Rename, archive, delete, fork, switch, or list chats.",
     "manage_memory": "- ```manage_memory``` -- Manage user memory (facts, preferences).",
-    "manage_skills": "- ```manage_skills``` -- Skill registry. Check before domain work -- there may be a procedure.",
+    "manage_skills": "- ```manage_skills``` -- Search/view task procedures.",
     "manage_tasks": "- ```manage_tasks``` -- Scheduled background tasks.",
     "manage_endpoints": "- ```manage_endpoints``` -- Add/remove/configure AI model endpoints.",
     "manage_mcp": "- ```manage_mcp``` -- Manage MCP tool servers.",
@@ -295,35 +295,35 @@ TOOL_SECTIONS = {
     "manage_settings": "- ```manage_settings``` -- Change app settings and tool toggles.",
     "manage_notes": "- ```manage_notes``` -- Notes, checklists, and user reminders.",
     "list_email_accounts": "- ```list_email_accounts``` -- List configured email accounts.",
-    "send_email": "- ```send_email``` -- Send email. JSON: to, subject, body, account.",
-    "list_emails": "- ```list_emails``` -- List recent emails. JSON: folder, max_results, unread_only, account.",
+    "send_email": "- ```send_email``` -- Send a new email.",
+    "list_emails": "- ```list_emails``` -- List recent emails.",
     "read_email": "- ```read_email``` -- Read a specific email by UID.",
-    "reply_to_email": "- ```reply_to_email``` -- Send a reply by UID. For drafts, use `ui_control open_email_reply`.",
+    "reply_to_email": "- ```reply_to_email``` -- Send a reply by UID.",
     "bulk_email": "- ```bulk_email``` -- Bulk delete/archive/mark emails.",
     "delete_email": "- ```delete_email``` -- Delete one email by UID.",
     "archive_email": "- ```archive_email``` -- Archive one email by UID.",
     "mark_email_read": "- ```mark_email_read``` -- Mark one email read/unread.",
     "resolve_contact": "- ```resolve_contact``` -- Look up contact email by name.",
-    "manage_contact": "- ```manage_contact``` -- CardDAV contacts. JSON: list|add|update|delete.",
-    "manage_calendar": "- ```manage_calendar``` -- Calendar events. Call list_calendars first. JSON args.",
+    "manage_contact": "- ```manage_contact``` -- Manage CardDAV contacts.",
+    "manage_calendar": "- ```manage_calendar``` -- Calendar events; list calendars first.",
     "create_session": "- ```create_session``` -- Create a new chat.",
-    "list_sessions": "- ```list_sessions``` -- List chats, newest first. Preserve clickable links.",
+    "list_sessions": "- ```list_sessions``` -- List chats, newest first.",
     "send_to_session": "- ```send_to_session``` -- Send a message to another session.",
     "search_chats": "- ```search_chats``` -- Search past chat transcripts.",
     "pipeline": "- ```pipeline``` -- Multi-step AI pipeline.",
-    "ui_control": "- ```ui_control``` -- Control UI: open panels, toggle tools, email drafts, themes.",
+    "ui_control": "- ```ui_control``` -- Open panels, toggle tools, draft replies, themes.",
     "ask_user": "- ```ask_user``` -- Ask user a multiple-choice question when stuck.",
     "update_plan": "- ```update_plan``` -- Update the active plan checklist.",
     "list_served_models": "- ```list_served_models``` -- Show what Cookbook is serving. NO args.",
     "stop_served_model": "- ```stop_served_model``` -- Stop a Cookbook model server.",
     "tail_serve_output": "- ```tail_serve_output``` -- Read stderr of a failing cookbook task.",
     "download_model": "- ```download_model``` -- Download a HuggingFace model.",
-    "serve_model": "- ```serve_model``` -- Start serving a model. After launch, verify with list_served_models.",
+    "serve_model": "- ```serve_model``` -- Start serving a model.",
     "list_downloads": "- ```list_downloads``` -- Show in-progress downloads.",
     "cancel_download": "- ```cancel_download``` -- Cancel a download.",
     "search_hf_models": "- ```search_hf_models``` -- Search HuggingFace for models.",
     "list_cached_models": "- ```list_cached_models``` -- List models on disk.",
-    "app_api": "- ```app_api``` -- Generic call to allowed internal API endpoints. Prefer named tools when they exist.",}
+    "app_api": "- ```app_api``` -- Allowed internal API call; prefer named tools.",}
 
 
 def get_builtin_overrides() -> dict:
@@ -355,8 +355,8 @@ def _assemble_prompt(tool_names: set, disabled_tools: set = None, compact: bool 
     if compact:
         tool_list = ", ".join(sorted(included)) if included else "none"
         parts = [
-            "You are an AI assistant with tool access.",
-            f"Available tools: {tool_list}.",
+            "You are an AI assistant inside Odysseus.",
+            f"Relevant tools this turn: {tool_list}.",
             _API_AGENT_RULES,
         ]
         parts.extend(_domain_rules_for_tools(included))
@@ -384,16 +384,6 @@ def _assemble_prompt(tool_names: set, disabled_tools: set = None, compact: bool 
 
     if one_liners:
         parts.append("## Additional tools\n" + "\n".join(one_liners))
-
-    # Mention tools that exist but weren't included
-    all_known = set(TOOL_SECTIONS.keys())
-    not_shown = all_known - included - disabled
-    if not_shown:
-        sample = sorted(not_shown)[:5]
-        hint = ", ".join(sample)
-        if len(not_shown) > 5:
-            hint += f", ... ({len(not_shown) - 5} more)"
-        parts.append(f"(Other tools available when needed: {hint})")
 
     parts.append(_AGENT_RULES)
     parts.extend(_domain_rules_for_tools(included))
