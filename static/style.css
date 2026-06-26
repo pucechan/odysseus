@@ -71,7 +71,7 @@
   --sidebar-font-size: 14px;
   --sidebar-section-font-size: 12px;
   --chat-font-size: 1.05rem;
-  --composer-font-size: 15.5px;
+  --composer-font-size: 17px;
   --modal-font-size: 16px;
   --modal-control-font-size: 14.5px;
   --modal-small-font-size: 14px;
@@ -38661,4 +38661,16 @@ body.theme-frosted .modal {
 #memory-modal .memory-tab-panel[data-memory-panel="settings"] .admin-toggle-sub {
   font-size: 13px !important;
   line-height: 1.45;
+}
+
+/* Chat composer readability — keep the main edit box comfortably legible. */
+.chat-input-bar textarea#message,
+#message {
+  font-size: var(--composer-font-size, 17px) !important;
+  line-height: 1.55 !important;
+}
+
+.chat-input-bar textarea#message::placeholder,
+#message::placeholder {
+  font-size: var(--composer-font-size, 17px) !important;
 }
