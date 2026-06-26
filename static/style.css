@@ -2784,6 +2784,19 @@ body.bg-pattern-sparkles {
       color: var(--fg);
       background: color-mix(in srgb, var(--accent, var(--red)) 10%, transparent);
     }
+    .strict-tools-toggle.disabled,
+    .strict-tools-toggle:has(input:disabled) {
+      opacity: 0.45;
+      cursor: not-allowed;
+      color: color-mix(in srgb, var(--fg) 38%, transparent);
+      background: color-mix(in srgb, var(--panel) 35%, transparent);
+      border-color: color-mix(in srgb, var(--border) 70%, transparent);
+    }
+    .strict-tools-toggle.disabled .strict-tools-box,
+    .strict-tools-toggle:has(input:disabled) .strict-tools-box {
+      border-color: color-mix(in srgb, var(--fg) 25%, transparent);
+      box-shadow: none;
+    }
     @media (max-width: 768px) {
       .mode-toggle.mode-toggle-three [data-llama-mode="unified"] > span {
         font-size: 0;

@@ -828,7 +828,7 @@ import { wireArrowUpRecall, getLastUserMessageFromChatHistory } from './composer
       }
       fd.append('mode', isAgentMode ? 'agent' : 'chat');
       var strictCb = document.getElementById('strict-tools-toggle');
-      if (strictCb && strictCb.checked) {
+      if (isAgentMode && strictCb && strictCb.checked) {
         fd.append('force_tools', 'true');
       }
       if (el('web-toggle').checked) {

@@ -1621,6 +1621,15 @@ function initializeEventListeners() {
       // Slide the pill to the active button
       const toggle = agentBtn.closest('.mode-toggle');
       if (toggle) toggle.classList.toggle('mode-chat', mode === 'chat');
+      // Force Tool is only meaningful when Agent tools are available.
+      if (strictTools) {
+        strictTools.disabled = mode !== 'agent';
+        const wrap = strictTools.closest('.strict-tools-toggle');
+        if (wrap) {
+          wrap.classList.toggle('disabled', mode !== 'agent');
+          wrap.setAttribute('aria-disabled', String(mode !== 'agent'));
+        }
+      }
       // Workspace pill + overflow entry are agent-only - hide immediately (no flash).
       try { workspaceModule.applyMode(mode); } catch (_) {}
       // Delay tool glow-up for a staggered effect
