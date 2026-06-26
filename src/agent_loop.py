@@ -238,6 +238,12 @@ _DOMAIN_RULES = {
     "settings": """\
 ## Settings rules
 - Use `manage_settings` for prefs and tool toggles. Prefer named tools over `app_api`.""",
+    "contacts": """\
+## Contacts rules
+- Contact lookup/save/update -> `resolve_contact` / `manage_contact`, not memory.""",
+    "integrations": """\
+## Integration rules
+- Configured external services -> `api_call`, not shell/curl/app_api.""",
 }
 
 
@@ -250,8 +256,10 @@ _DOMAIN_TOOL_MAP = {
     "notes_calendar_tasks": {"manage_notes", "manage_calendar", "manage_tasks"},
     "ui": {"ui_control"},
     "sessions": {"create_session", "list_sessions", "manage_session", "send_to_session", "search_chats"},
-    "files": {"bash", "python", "read_file", "write_file", "edit_file", "grep", "glob", "ls", "get_workspace"},
+    "files": {"bash", "python", "read_file", "write_file", "edit_file", "grep", "glob", "ls", "get_workspace", "manage_bg_jobs"},
     "settings": {"manage_settings", "manage_endpoints", "manage_mcp", "manage_webhooks", "manage_tokens", "app_api"},
+    "contacts": {"resolve_contact", "manage_contact"},
+    "integrations": {"api_call"},
 }
 
 def _domain_rules_for_tools(tool_names: set) -> list[str]:
@@ -293,6 +301,8 @@ TOOL_SECTIONS = {
     "manage_documents": "- ```manage_documents``` -- List/read/open/delete editor documents.",
     "manage_research": "- ```manage_research``` -- List/read/delete deep research results.",
     "manage_settings": "- ```manage_settings``` -- Change app settings and tool toggles.",
+    "api_call": "- ```api_call``` -- Call a configured external integration/service.",
+    "manage_bg_jobs": "- ```manage_bg_jobs``` -- Inspect/stop detached background bash jobs.",
     "manage_notes": "- ```manage_notes``` -- Notes, checklists, and user reminders.",
     "list_email_accounts": "- ```list_email_accounts``` -- List configured email accounts.",
     "send_email": "- ```send_email``` -- Send a new email.",
@@ -598,6 +608,12 @@ def _classify_agent_request(messages: List[Dict], last_user: str) -> Dict[str, o
         domains.add("documents")
     if has(r"\b(search|web|google|look up|latest|news|current|weather|forecast|stock price|price of|website|url|https?://|www\.)\b"):
         domains.add("web")
+    if has(
+        r"\b(wyszukaj|wyszukać|wyszukac)\b.*\b(internet|internecie|online|web)\b",
+        r"\b(sprawd[zź]|znajd[zź])\b.*\b(internet|internecie|online|web)\b",
+        r"\b(aktualn\w*|bieżąc\w*|biezac\w*|dzisiaj|teraz)\b.*\b(pogod\w*|temperatur\w*)\b",
+    ):
+        domains.add("web")
     if has(r"\b(research|deep dive|investigate|look into)\b"):
         domains.add("web")
     if has(r"\b(open|show|toggle|turn on|turn off|disable|enable|switch model|change model|settings|theme|panel)\b"):
@@ -606,8 +622,17 @@ def _classify_agent_request(messages: List[Dict], last_user: str) -> Dict[str, o
         domains.add("sessions")
     if has(r"\b(file|folder|directory|repo|git|grep|find in files|read file|edit file|shell|terminal|bash|python)\b"):
         domains.add("files")
+    if (has(r"\b(background|bg)\s+(jobs?|task)\b")
+            or has(r"\b(kill|stop|cancel|terminate|check|tail|show|list)\b.{0,16}\bjobs?\b")
+            or has(r"\bjobs?\b.{0,16}\b(output|status|done|finished|running)\b")):
+        domains.add("files")
     if has(r"\b(endpoint|api token|mcp|webhook|preference|configure|config|setting)\b"):
         domains.add("settings")
+    if has(r"\b(contact|contacts|phone|phone number|address book|vcard)\b"):
+        domains.add("contacts")
+    if has(r"\bapi[ _]call\b", r"\bintegrations?\b",
+           r"\b(?:home ?assistant|miniflux|gitea|linkding|jellyfin)\b"):
+        domains.add("integrations")
 
     low_signal = not continuation and not domains
     return {
@@ -636,8 +661,9 @@ def _recent_context_for_retrieval(messages: List[Dict], max_user: int = 3, max_c
         if isinstance(content, list):
             content = " ".join(b.get("text", "") for b in content if isinstance(b, dict))
         content = (content or "").strip()
-        # Skip injected tool-result envelopes — role=user but not human intent.
-        if not content or content.startswith("[Tool execution results]"):
+        # Skip injected envelopes — role=user but not human intent.
+        meta = msg.get("metadata") or {}
+        if not content or meta.get("trusted") is False or content.startswith("[Tool execution results]"):
             continue
         collected.append(content)
         if len(collected) >= max_user:
@@ -1013,8 +1039,11 @@ def _build_base_prompt(
         disabled.add("generate_image")
 
     if relevant_tools is not None:
-        # RAG mode: include always-available + retrieved + admin (if needed)
-        tool_names = set(ALWAYS_AVAILABLE) | set(relevant_tools)
+        # RAG mode: trust the relevant_tools set as already-composed. The
+        # selector starts from ALWAYS_AVAILABLE and may intentionally discard
+        # a tool that conflicts with the query (e.g. drop manage_memory for
+        # clear contact-save requests). Do not add it back here.
+        tool_names = set(relevant_tools) | {"ask_user", "update_plan"}
         if needs_admin:
             tool_names |= _ADMIN_TOOLS
         agent_prompt = _assemble_prompt(tool_names, disabled, compact=compact)
