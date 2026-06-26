@@ -72,9 +72,9 @@
   --sidebar-section-font-size: 12px;
   --chat-font-size: 1.05rem;
   --composer-font-size: 15.5px;
-  --modal-font-size: 15px;
-  --modal-control-font-size: 13.5px;
-  --modal-small-font-size: 13px;
+  --modal-font-size: 16px;
+  --modal-control-font-size: 14.5px;
+  --modal-small-font-size: 14px;
 }
 
 :root.light {
@@ -38441,4 +38441,122 @@ body.theme-frosted .modal {
 #log-console-container,
 .log-line {
   font-size: 11px !important;
+}
+
+/* Larger modal content pass — the first readability bump helped the frame,
+   but dense tool interiors (Brain/Settings) have their own tiny row classes. */
+.memory-modal-content,
+#memory-modal .memory-modal-content {
+  font-size: var(--modal-font-size, 16px) !important;
+}
+
+.memory-tab,
+.memory-toolbar-btn,
+.memory-toolbar-toggle,
+.memory-sort-btn,
+.memory-sort-item,
+.memory-search-input,
+.memory-add-input,
+.memory-bulk-bar,
+.memory-bulk-check-all,
+.memory-count,
+#memory-selected-count,
+.admin-toggle-state {
+  font-size: var(--modal-small-font-size, 14px) !important;
+}
+
+.memory-desc,
+.memory-item-text,
+.memory-item-title,
+.memory-item-edit-input,
+.memory-edit-cat-select {
+  font-size: 14px !important;
+  line-height: 1.5;
+}
+
+.memory-item {
+  padding: 10px 12px;
+  gap: 10px;
+}
+
+.memory-item-content {
+  gap: 5px;
+}
+
+.memory-item .memory-chip,
+.memory-item [class*="badge"],
+.task-status-badge,
+.task-builtin-badge,
+.doc-version-latest {
+  font-size: 11px !important;
+}
+
+.memory-tabs {
+  margin-top: 0;
+}
+
+.memory-tab {
+  padding: 9px 15px;
+}
+
+.memory-toolbar-btn,
+.memory-sort-btn,
+.memory-search-input {
+  min-height: 28px;
+}
+
+.settings-modal-content {
+  font-size: var(--modal-font-size, 16px) !important;
+}
+
+.settings-panels {
+  line-height: 1.45;
+}
+
+.settings-nav-item,
+.settings-label,
+.shortcut-label,
+.admin-toggle-label,
+.admin-user-name,
+.settings-select,
+.settings-input,
+.adm-provider-btn,
+.adm-provider-item,
+.mcp-tools-search {
+  font-size: var(--modal-small-font-size, 14px) !important;
+}
+
+.admin-toggle-sub,
+.settings-modal-content p,
+.settings-modal-content small,
+.settings-modal-content .muted-sm,
+.shortcut-row,
+.mcp-tools-list label,
+.priv-models-list label,
+.search-fb-chip,
+.search-fb-add {
+  font-size: 13px !important;
+  line-height: 1.45;
+}
+
+.settings-sidebar-label,
+.shortcut-category,
+.admin-priv-section,
+.mcp-tools-panel .mcp-tools-header span:first-child,
+.mcp-tools-panel .mcp-tools-header a,
+.priv-models-all,
+.priv-models-none,
+.shortcut-hint,
+.shortcut-key kbd,
+.shortcut-unset,
+.theme-opacity-label,
+.settings-system-logs-autopoll-container,
+#log-console-container,
+.log-line {
+  font-size: 12px !important;
+}
+
+.admin-card h2,
+.settings-modal-content .admin-card h2 {
+  font-size: 16px !important;
 }
