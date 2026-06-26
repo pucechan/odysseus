@@ -1,9 +1,9 @@
 ---
 name: memory
-description: Manage persistent user memory — facts, preferences, contacts, events
+description: Manage persistent user memory — durable facts and preferences about the user
 version: 1.0.0
 category: system-management
-tags: [memory, facts, preferences, contacts, events]
+tags: [memory, facts, preferences, user-facts]
 status: published
 confidence: 0.90
 source: user
@@ -13,13 +13,13 @@ created: "2026-06-13T02:40:00Z"
 
 ## When to Use
 
-Use this skill to read, write, and manage the user's persistent memory. Memory stores facts, preferences, contacts, and events that persist across sessions.
+Use this skill to read, write, and manage the user's persistent memory. Memory stores durable facts and preferences about the user that should persist across sessions.
 
-Key phrases: "remember that I...", "my name is...", "I live in...", "I prefer...", "call me...", "save that", "what do you know about me", "forget that", "update my address".
+Key phrases: "remember that I...", "my name is...", "I live in...", "I prefer...", "call me...", "save that", "what do you know about me", "forget that", "update my preference".
 
 Do NOT use this skill for:
 - Notes, checklists, reminders → use `manage_notes` instead
-- Contacts with email/phone for email sending → use `manage_contact` instead
+- Contacts, phone numbers, email addresses, or postal addresses for other people → use `resolve_contact` / `manage_contact` instead
 - Recurring tasks → use `manage_tasks` instead
 
 ## Prerequisites
@@ -34,7 +34,7 @@ This skill requires one native tool (always available):
 When the user shares:
 - Personal facts: "my name is Simone", "I live in London", "I'm a developer"
 - Preferences: "I prefer concise replies", "I like dark mode", "call me honey"
-- Important dates: "my birthday is June 15"
+- Important personal dates: "my birthday is June 15"
 - Recurring context: "I work from home", "I have three cats"
 
 Call `manage_memory` with `action: "add"`, the fact as `text`, and optionally a `category`.
@@ -42,9 +42,8 @@ Call `manage_memory` with `action: "add"`, the fact as `text`, and optionally a 
 Categories help organize memories:
 - `personal` — name, location, birthday, family
 - `preferences` — communication style, likes/dislikes
-- `contacts` — people (name, relation, context)
 - `work` — job, employer, skills
-- `events` — important dates, milestones
+- `event` — important personal dates or milestones
 
 ### Step 2: Choose the right action
 
