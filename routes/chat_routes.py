@@ -1267,6 +1267,18 @@ def setup_chat_routes(
                     _forced_tools = None
                     if allow_web_search is not None and str(allow_web_search).lower() == "true":
                         _forced_tools = {"web_search", "web_fetch"}
+                    if (
+                        allow_bash is not None and str(allow_bash).lower() == "true"
+                    ):
+                        _bash_tools = {
+                            "bash", "python",
+                            "read_file", "write_file", "edit_file",
+                            "grep", "glob", "ls", "get_workspace",
+                        }
+                        if _forced_tools:
+                            _forced_tools.update(_bash_tools)
+                        else:
+                            _forced_tools = set(_bash_tools)
 
                     async for chunk in stream_agent_loop(
                         sess.endpoint_url,
