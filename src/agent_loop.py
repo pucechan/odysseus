@@ -363,10 +363,13 @@ def _assemble_prompt(tool_names: set, disabled_tools: set = None, compact: bool 
     included = tool_names - disabled
 
     if compact:
-        tool_list = ", ".join(sorted(included)) if included else "none"
+        # For API models with native function calling (OpenRouter, OpenAI,
+        # Claude, etc.), the tool list is delivered as JSON function schemas
+        # via the API's `tools` parameter. A plain-text "Relevant tools this
+        # turn" header is redundant and has historically drifted from the
+        # actual schemas, confusing the model. Just the rules + domain hints.
         parts = [
             "You are an AI assistant inside Odysseus.",
-            f"Relevant tools this turn: {tool_list}.",
             _API_AGENT_RULES,
         ]
         parts.extend(_domain_rules_for_tools(included))
