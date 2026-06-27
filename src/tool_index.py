@@ -42,6 +42,11 @@ ALWAYS_AVAILABLE = frozenset({
     "ask_user",
     # Write back to the active plan (tick steps done / revise) during execution.
     "update_plan",
+    # Gateway to the skill system: search, view, and load skill procedures.
+    # Without this as always-on native, the skill index in the prompt is
+    # decoration — the model can see skills listed but has no way to open
+    # one. Lightweight and essential.
+    "manage_skills",
 })
 
 # Tools that the Personal Assistant always has access to during scheduled
