@@ -1640,6 +1640,14 @@ async def stream_agent_loop(
     if forced_tools and _relevant_tools is not None:
         _relevant_tools.update(forced_tools)
 
+    # Admin tools are added to the prompt text (Layer 1) in _build_base_prompt
+    # when `needs_admin` is True, but the function schema filter (Layer 2) only
+    # uses `_relevant_tools`. Without injecting them here, the two layers
+    # disagree — the model sees "manage_skills, manage_calendar" in the text
+    # header but can't actually call them because their schemas were never sent.
+    if _needs_admin and _relevant_tools is not None:
+        _relevant_tools.update(_ADMIN_TOOLS)
+
     if _relevant_tools is not None:
         logger.info("[agent-intent] selected_tools=%s", sorted(_relevant_tools)[:50])
 
