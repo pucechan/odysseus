@@ -640,7 +640,9 @@ def _build_chatgpt_responses_payload(
     if not _restricts_temperature(model):
         payload["temperature"] = temperature
     if tools:
-        payload["tools"] = _convert_tools_to_responses_format(tools)
+        converted = _convert_tools_to_responses_format(tools)
+        logger.info(f"[chatgpt-responses] Converted {len(tools)} tools to Response API format: {[t.get('name') for t in converted][:15]}")
+        payload["tools"] = converted
     if tool_choice is not None:
         payload["tool_choice"] = tool_choice
     # ChatGPT Subscription Codex API does not support max_output_tokens —
@@ -1617,6 +1619,7 @@ async def stream_llm(url: str, model: str, messages: List[Dict], temperature: fl
 
     # ── ChatGPT Subscription / Codex Responses streaming ──
     if provider == "chatgpt-subscription":
+        logger.info(f"[chatgpt-responses] Starting stream with {len(tools or [])} tools: {[t.get('function', {}).get('name', t.get('name')) for t in (tools or [])][:10]}")
         event_name = ""
         input_tokens = 0
         output_tokens = 0
@@ -1698,7 +1701,10 @@ async def stream_llm(url: str, model: str, messages: List[Dict], temperature: fl
                                         "arguments": args,
                                     })
                         # Yield accumulated tool calls
+                        logger.info(f"[chatgpt-responses] Completed: {len(_chatgpt_tool_calls)} tool calls from stream, "
+                                     f"{len(output_items)} items in response output")
                         if _chatgpt_tool_calls:
+                            logger.info(f"[chatgpt-responses] Tool calls: {[tc.get('name') for tc in _chatgpt_tool_calls]}")
                             yield f'data: {json.dumps({"type": "tool_calls", "calls": _chatgpt_tool_calls})}\n\n'
                         # Yield usage info
                         usage = response.get("usage") or data.get("usage") or {}
