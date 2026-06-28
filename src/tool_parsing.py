@@ -56,6 +56,20 @@ _XML_DIRECT_TOOL_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Gemma / llama.cpp chat-template leakage seen as plain content rather than
+# structured OpenAI tool_calls, e.g.:
+#   <tool_call>call:bash{command:<|"git branch"|>}<tool_call>
+# The closing tag is often malformed/repeated as another opening tag, so parse
+# the inner `call:name{...}` body independently of XML correctness.
+_GEMMA_CALL_RE = re.compile(
+    r"call\s*:\s*([A-Za-z_][\w-]*)\s*\{([\s\S]*?)\}",
+    re.IGNORECASE,
+)
+_GEMMA_ARG_RE = re.compile(
+    r"([A-Za-z_][\w-]*)\s*:\s*(<\|[\s\S]*?\|>|\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'|[^,}]+)",
+    re.IGNORECASE,
+)
+
 # Pattern 3b: StepFun Step-3.x native tool-call tokens. The tokenizer defines:
 #   <｜tool▁calls▁begin｜> ... <｜tool▁calls▁end｜>
 #   <｜tool▁call▁begin｜>tool_name<｜tool▁sep｜>{...}<｜tool▁call▁end｜>
@@ -439,6 +453,37 @@ def _parse_tool_call_block(raw: str) -> Optional[ToolBlock]:
     return None
 
 
+def _clean_gemma_arg_value(value: str) -> str:
+    v = (value or "").strip()
+    if v.startswith("<|") and v.endswith("|>"):
+        v = v[2:-2].strip()
+    # Some templates wrap payload with decorative/sentinel quote-ish glyphs.
+    v = v.strip().strip('"\'`').strip("▸◂▶◀")
+    return v.strip()
+
+
+def _parse_gemma_call_markup(raw: str) -> Optional[ToolBlock]:
+    """Parse Gemma/llama.cpp `call:tool{key:<|value|>}` text leakage.
+
+    This is a repair path for local servers that were given native tool schemas
+    but streamed the model's tool-call template as normal content instead of
+    returning `choices[].delta.tool_calls`. It deliberately delegates to the
+    canonical native converter so argument shaping stays identical.
+    """
+    m = _GEMMA_CALL_RE.search(raw or "")
+    if not m:
+        return None
+    tool_name = m.group(1).lower().replace("-", "_")
+    body = m.group(2)
+    params = {}
+    for am in _GEMMA_ARG_RE.finditer(body):
+        params[am.group(1)] = _clean_gemma_arg_value(am.group(2))
+    if not params and body.strip():
+        params = {"command": _clean_gemma_arg_value(body)}
+    from src.tool_schemas import function_call_to_tool_block
+    return function_call_to_tool_block(tool_name, json.dumps(params))
+
+
 def _parse_xml_invoke(inv_match) -> Optional[ToolBlock]:
     """Parse an <invoke name="tool"><parameter ...>...</parameter></invoke> match.
 
@@ -727,12 +772,17 @@ def parse_tool_blocks(text: str, skip_fenced: bool = False) -> List[ToolBlock]:
             return blocks
         # Try wrapped: <tool_call><invoke ...>...</invoke></tool_call>
         for m in _XML_TOOL_CALL_RE.finditer(text):
-            for inv in _XML_INVOKE_RE.finditer(m.group(1)):
+            body = m.group(1)
+            gemma_block = _parse_gemma_call_markup(body)
+            if gemma_block:
+                blocks.append(gemma_block)
+                continue
+            for inv in _XML_INVOKE_RE.finditer(body):
                 block = _parse_xml_invoke(inv)
                 if block:
                     blocks.append(block)
             if not blocks:
-                for direct in _XML_DIRECT_TOOL_RE.finditer(m.group(1)):
+                for direct in _XML_DIRECT_TOOL_RE.finditer(body):
                     block = _parse_xml_direct_tool(direct)
                     if block:
                         blocks.append(block)
@@ -741,6 +791,10 @@ def parse_tool_blocks(text: str, skip_fenced: bool = False) -> List[ToolBlock]:
         if not blocks:
             for m in _XML_OPEN_TOOL_CALL_RE.finditer(text):
                 body = m.group(1)
+                gemma_block = _parse_gemma_call_markup(body)
+                if gemma_block:
+                    blocks.append(gemma_block)
+                    break
                 for inv in _XML_INVOKE_RE.finditer(body):
                     block = _parse_xml_invoke(inv)
                     if block:

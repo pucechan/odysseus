@@ -1132,9 +1132,14 @@ def _resolve_tool_blocks(round_response: str, native_tool_calls: list, round_num
         # sees this and can retry with `tool_choice: "required"` (Strict
         # Tools mode) or let the user know nothing was executed.
         if is_api_model:
-            tool_blocks = []
-            logger.info(f"Agent round {round_num}: API model, no native calls — fenced fallback disabled; "
-                        f"{len(round_response)} chars of text-only response")
+            # Native-tool models should normally use the structured channel, but
+            # some local OpenAI-compatible serves leak explicit tool-call markup
+            # as text (e.g. <tool_call>call:bash{...}) instead of returning
+            # delta.tool_calls. Repair ONLY explicit tool markup; keep ordinary
+            # fenced code disabled so examples are not executed accidentally.
+            tool_blocks = parse_tool_blocks(round_response, skip_fenced=True)
+            logger.info(f"Agent round {round_num}: API model, no native calls — fenced fallback disabled, "
+                        f"explicit markup repaired={len(tool_blocks)}; {len(round_response)} chars of text-only response")
         else:
             # Non-API / legacy models: attempt fenced-block parsing as their
             # only tool channel. Also catch DSML / [TOOL_CALL] / <invoke> / etc.
@@ -1860,12 +1865,13 @@ async def stream_agent_loop(
     # tool, so we don't nudge on harmless transitional text like "let me
     # know what you think".
     _INTENT_RE = re.compile(
-        r"(?:^|\n)\s*(?:let me|i'?ll|i will|going to|let's)\s+"
+        r"(?:^|\n|[.!?]\s+)\s*(?:next[, ]+)?(?:for (?:my|the) next step[, ]+)?"
+        r"(?:let me|i'?ll|i will|i'?m going to|i am going to|going to|let's|i need to|i should)\s+"
         r"(?:tail|check|investigate|look at|see|tail|read|fetch|inspect|"
         r"verify|diagnose|examine|debug|capture|grab|pull|view|run|call|"
         r"trigger|launch|start|kick off|stop|kill|restart|adopt|serve|"
-        r"register|adopt|list|search|find|query|hit|ping|test)"
-        r"\b[^.\n]{0,140}",
+        r"register|adopt|list|search|find|query|hit|ping|test|examine)"
+        r"\b[^.\n]{0,180}",
         re.IGNORECASE,
     )
     _awaiting_user = False  # set by ask_user → end the turn and wait for a choice
