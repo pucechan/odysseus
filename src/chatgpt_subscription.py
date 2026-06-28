@@ -300,16 +300,87 @@ def to_http_exception(exc: Exception) -> HTTPException:
 
 
 def build_responses_input(messages: list[dict]) -> list[dict]:
+    """Convert OpenAI-style messages to Responses API /input format.
+
+    The Responses API uses a flat list of items:
+    - User/developer/system messages: {"role": "user", "content": [{type: "input_text", text: ...}]}
+    - Assistant messages: {"type": "message", "role": "assistant", "content": [{type: "output_text", text: ...}], "id": ..., "status": "completed"}
+    - Assistant tool calls: {"type": "function_call", "call_id": ..., "name": ..., "arguments": ...}
+    - Tool results: {"type": "function_call_output", "call_id": ..., "output": ...}
+    """
+    import uuid
+
     input_items: list[dict] = []
     for msg in messages or []:
         role = msg.get("role") or "user"
+
         if role == "tool":
-            role = "user"
-        content = msg.get("content")
-        if isinstance(content, list):
-            text = "\n".join(str(part.get("text") or part.get("content") or "") for part in content if isinstance(part, dict))
+            # Tool result: convert to function_call_output
+            call_id = msg.get("tool_call_id", "") or str(uuid.uuid4())
+            content = msg.get("content")
+            if isinstance(content, list):
+                text = "\n".join(
+                    str(part.get("text") or part.get("content") or "")
+                    for part in content if isinstance(part, dict)
+                )
+            else:
+                text = "" if content is None else str(content)
+            input_items.append({
+                "type": "function_call_output",
+                "call_id": call_id,
+                "output": text,
+            })
+
+        elif role == "assistant":
+            # Assistant messages can have both text content and tool calls
+            tool_calls = msg.get("tool_calls") or []
+
+            # Add the assistant message (text content)
+            content = msg.get("content")
+            if isinstance(content, list):
+                text = "\n".join(
+                    str(part.get("text") or part.get("content") or "")
+                    for part in content if isinstance(part, dict)
+                )
+            else:
+                text = "" if content is None else str(content)
+
+            if text or not tool_calls:
+                input_items.append({
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": text, "annotations": []}],
+                    "id": f"msg_{uuid.uuid4().hex[:12]}",
+                    "status": "completed",
+                })
+
+            # Add each tool call as a separate function_call item
+            for tc in tool_calls:
+                fn = tc.get("function") or {}
+                call_id = tc.get("id", "") or str(uuid.uuid4())
+                args = fn.get("arguments", "{}")
+                if isinstance(args, dict):
+                    args = json.dumps(args)
+                input_items.append({
+                    "type": "function_call",
+                    "call_id": call_id,
+                    "name": fn.get("name", ""),
+                    "arguments": args,
+                })
+
         else:
-            text = "" if content is None else str(content)
-        input_type = "output_text" if role == "assistant" else "input_text"
-        input_items.append({"role": role, "content": [{"type": input_type, "text": text}]})
+            # Regular user/system message
+            content = msg.get("content")
+            if isinstance(content, list):
+                text = "\n".join(
+                    str(part.get("text") or part.get("content") or "")
+                    for part in content if isinstance(part, dict)
+                )
+            else:
+                text = "" if content is None else str(content)
+            input_items.append({
+                "role": role,
+                "content": [{"type": "input_text", "text": text}],
+            })
+
     return input_items

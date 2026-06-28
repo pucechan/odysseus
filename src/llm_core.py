@@ -590,6 +590,31 @@ def _chatgpt_subscription_instructions(messages: List[Dict]) -> str:
     return "You are a helpful AI assistant."
 
 
+def _convert_tools_to_responses_format(tools: List[Dict]) -> List[Dict]:
+    """Convert OpenAI Chat Completions tool schemas to Responses API flat format.
+
+    Responses API uses flat fields (name, description, parameters at top level)
+    instead of the nested function wrapper: {"type": "function", "function": {...}}.
+    """
+    if not tools:
+        return []
+    result = []
+    for t in tools:
+        if not isinstance(t, dict):
+            continue
+        fn = t.get("function") if t.get("type") == "function" else t
+        if not fn or not isinstance(fn, dict):
+            continue
+        result.append({
+            "type": "function",
+            "name": fn.get("name", ""),
+            "description": fn.get("description", ""),
+            "parameters": fn.get("parameters", {}),
+            "strict": False,
+        })
+    return result
+
+
 def _build_chatgpt_responses_payload(
     model: str,
     messages: List[Dict],
@@ -597,6 +622,8 @@ def _build_chatgpt_responses_payload(
     max_tokens: int,
     *,
     stream: bool = False,
+    tools: Optional[List[Dict]] = None,
+    tool_choice: Any = None,
 ) -> Dict:
     from src.chatgpt_subscription import build_responses_input
 
@@ -607,9 +634,15 @@ def _build_chatgpt_responses_payload(
         "input": build_responses_input(conversation),
         "stream": stream,
         "store": False,
+        "tool_choice": "auto",
+        "parallel_tool_calls": True,
     }
     if not _restricts_temperature(model):
         payload["temperature"] = temperature
+    if tools:
+        payload["tools"] = _convert_tools_to_responses_format(tools)
+    if tool_choice is not None:
+        payload["tool_choice"] = tool_choice
     # ChatGPT Subscription Codex API does not support max_output_tokens —
     # passing it returns HTTP 400 "Unsupported parameter: max_output_tokens".
     # Do not include it in the payload.
@@ -1541,7 +1574,10 @@ async def stream_llm(url: str, model: str, messages: List[Dict], temperature: fl
     elif provider == "chatgpt-subscription":
         target_url = _normalize_chatgpt_subscription_url(url)
         h = _provider_headers(provider, headers)
-        payload = _build_chatgpt_responses_payload(model, messages_copy, temperature, max_tokens, stream=True)
+        payload = _build_chatgpt_responses_payload(
+            model, messages_copy, temperature, max_tokens,
+            stream=True, tools=tools,
+        )
     else:
         target_url = url
         payload = {
@@ -1584,6 +1620,11 @@ async def stream_llm(url: str, model: str, messages: List[Dict], temperature: fl
         event_name = ""
         input_tokens = 0
         output_tokens = 0
+        # Track function calls from the Responses API stream
+        _chatgpt_tool_calls: List[Dict] = []  # accumulated {id, name, arguments}
+        _current_fc_id = ""
+        _current_fc_name = ""
+        _current_fc_args = ""
         try:
             client = _get_http_client()
             async with client.stream('POST', target_url, json=payload, headers=h, timeout=stream_timeout) as r:
@@ -1613,8 +1654,54 @@ async def stream_llm(url: str, model: str, messages: List[Dict], temperature: fl
                         delta = data.get("delta") or ""
                         if delta:
                             yield f'data: {json.dumps({"delta": delta})}\n\n'
+                    elif evt == "response.output_item.added":
+                        item = data.get("item") or {}
+                        if item.get("type") == "function_call":
+                            _current_fc_id = item.get("call_id", "") or item.get("id", "")
+                            _current_fc_name = item.get("name", "")
+                            _current_fc_args = item.get("arguments", "") or ""
+                    elif evt == "response.function_call_arguments.delta":
+                        delta = data.get("delta", "")
+                        _current_fc_args += delta
+                    elif evt == "response.function_call_arguments.done":
+                        final_args = data.get("arguments", _current_fc_args)
+                        _current_fc_args = final_args if not _current_fc_args.startswith(final_args) else _current_fc_args
+                    elif evt == "response.output_item.done":
+                        item = data.get("item") or {}
+                        if item.get("type") == "function_call":
+                            call_id = item.get("call_id", "") or _current_fc_id
+                            name = item.get("name", "") or _current_fc_name
+                            args = item.get("arguments", "") or _current_fc_args
+                            _chatgpt_tool_calls.append({
+                                "id": call_id,
+                                "name": name,
+                                "arguments": args,
+                            })
+                            # Reset per-call state
+                            _current_fc_id = ""
+                            _current_fc_name = ""
+                            _current_fc_args = ""
                     elif evt == "response.completed":
-                        usage = (data.get("response") or {}).get("usage") or data.get("usage") or {}
+                        # Also extract tool calls from the completed response's output array
+                        response = data.get("response") or {}
+                        output_items = response.get("output", []) or []
+                        for item in output_items:
+                            if isinstance(item, dict) and item.get("type") == "function_call":
+                                call_id = item.get("call_id", "") or item.get("id", "")
+                                name = item.get("name", "")
+                                args = item.get("arguments", "{}")
+                                # Avoid duplicates
+                                if not any(tc.get("id") == call_id for tc in _chatgpt_tool_calls):
+                                    _chatgpt_tool_calls.append({
+                                        "id": call_id,
+                                        "name": name,
+                                        "arguments": args,
+                                    })
+                        # Yield accumulated tool calls
+                        if _chatgpt_tool_calls:
+                            yield f'data: {json.dumps({"type": "tool_calls", "calls": _chatgpt_tool_calls})}\n\n'
+                        # Yield usage info
+                        usage = response.get("usage") or data.get("usage") or {}
                         input_tokens = usage.get("input_tokens") or usage.get("prompt_tokens") or input_tokens
                         output_tokens = usage.get("output_tokens") or usage.get("completion_tokens") or output_tokens
                         if input_tokens or output_tokens:
@@ -1626,6 +1713,9 @@ async def stream_llm(url: str, model: str, messages: List[Dict], temperature: fl
                         text = err.get("message") if isinstance(err, dict) else str(err or "ChatGPT Subscription request failed")
                         yield f'event: error\ndata: {json.dumps({"status": 502, "text": text})}\n\n'
                         return
+                # Stream ended without a completed event — yield any partial tool calls
+                if _chatgpt_tool_calls:
+                    yield f'data: {json.dumps({"type": "tool_calls", "calls": _chatgpt_tool_calls})}\n\n'
                 yield "data: [DONE]\n\n"
         except (httpx.ConnectError, httpx.ConnectTimeout) as e:
             _cooled = _mark_host_dead(target_url)
